@@ -1,0 +1,10 @@
+# Bloquer l'accès web aux scripts de sync
+Order allow,deny
+Deny from all
+
+# Autoriser uniquement localhost (pour tests)
+# Allow from 127.0.0.1
+# Allow from ::1
+
+# Ou autoriser une IP spécifique
+# Allow from 123.456.789.012
