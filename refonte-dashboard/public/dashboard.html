@@ -65,8 +65,9 @@
     <!-- BLOC RÉGULARITÉ (V2 UI) -->
     <!-- ========================= -->
     <section id="regularity" class="card regularity-card full-width" style="margin-top:16px">
+      <div id="regularity-tooltip" class="regularity-tooltip" style="display:none;"></div>
       <h2>Vos badges de régularité :</h2>
-      
+    
       <div class="regularity-summary">
         <div class="muted" id="regularity-period">—</div>
         <div class="regularity-kpis">
@@ -83,30 +84,36 @@
             <div class="station-icon">🏆</div>
             <div class="station-marker"></div>
             <span class="station-label">Bronze</span>
+
+            <div class="regularity-tooltip" aria-hidden="true"></div>   
           </div>
 
           <div class="station" data-tier="silver">
             <div class="station-icon">🏆</div>
             <div class="station-marker"></div>
             <span class="station-label">Argent</span>
+            <div class="regularity-tooltip" aria-hidden="true"></div>   
           </div>
 
           <div class="station" data-tier="gold">
             <div class="station-icon">🏆</div>
             <div class="station-marker"></div>
             <span class="station-label">Or</span>
+            <div class="regularity-tooltip" aria-hidden="true"></div>   
           </div>
 
           <div class="station" data-tier="platinum">
             <div class="station-icon">🏆</div>
             <div class="station-marker"></div>
             <span class="station-label">Platine</span>
+            <div class="regularity-tooltip" aria-hidden="true"></div>   
           </div>
 
           <div class="station" data-tier="diamond">
             <div class="station-icon">🏆</div>
             <div class="station-marker"></div>
             <span class="station-label">Diamant</span>
+            <div class="regularity-tooltip" aria-hidden="true"></div>   
           </div>
 
         </div>

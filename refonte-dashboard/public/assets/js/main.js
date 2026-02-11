@@ -171,6 +171,8 @@ async function loadData() {
     setupBarsNavigation();
     updateUI();
 
+    await loadRegularity();
+
     loaderEl.style.display = "none";
     dashboardEl.style.display = "block";
   } catch (error) {
@@ -189,7 +191,7 @@ async function loadRegularity() {
   try {
     console.log("loadRegularity() called");
 
-    const res = await fetch("/api/regularity.php", { credentials: "same-origin" });
+    const res = await fetch("/api/regularity.php", { credentials: "include" });
     const json = await res.json();
 
     console.log("regularity json:", json);
@@ -235,7 +237,10 @@ async function loadRegularity() {
     // 3) Stations (états visuels)
     // =========================
     const tiersOrder = ["bronze", "silver", "gold", "platinum", "diamond"];
-
+    
+    const TIER_LIMITS = { bronze: 3, silver: 6, gold: 12, platinum: 19, diamond: 25 };
+    const TIER_LABELS = { bronze: "Bronze", silver: "Argent", gold: "Or", platinum: "Platine", diamond: "Diamant" };
+    
     // Important : on cible UNIQUEMENT les stations du bloc régularité
     const stationsRoot = document.getElementById("regularity-stations");
     const stations = stationsRoot
@@ -265,6 +270,28 @@ async function loadRegularity() {
       }
     });
 
+    stations.forEach((el) => {
+      const t = el.dataset.tier;
+      const tooltip = el.querySelector(".regularity-tooltip");
+      if (!t || !tooltip) return;
+
+      const label = TIER_LABELS[t] || t;
+      const limit = TIER_LIMITS[t] || 0;
+
+      let text = "";
+
+      if (el.classList.contains("reached")) {
+        text = `Badge ${label}. Déjà débloqué ce mois-ci ✔️`;
+      } else if (el.classList.contains("current")) {
+        text = `Badge ${label}. Ton niveau actuel 🌟`;
+      } else {
+        const remaining = Math.max(0, limit - activeDays);
+        text = `Badge ${label}. Plus que ${remaining} connexion${remaining > 1 ? "s" : ""} pour l’atteindre 💪`;
+      }
+
+      tooltip.textContent = text;
+    });
+
     // =========================
     // 4) Message motivant
     // =========================
@@ -274,7 +301,7 @@ async function loadRegularity() {
 
       if (!tier) {
         msgEl.textContent =
-          "Commence ton parcours : un peu de régularité et le premier badge t’attend 👀";
+          "Plus tu te connectes régulièrement, plus tu montes en niveau et débloques de nouveaux badges !";
       } else if (!nextTier) {
         msgEl.textContent =
           "💎 Niveau Diamant atteint ! Ta régularité est exceptionnelle, bravo !";
@@ -283,6 +310,66 @@ async function loadRegularity() {
           `Encore ${daysToNext} jour${daysToNext > 1 ? "s" : ""} pour atteindre le niveau ${String(nextTier).toUpperCase()} 💪`;
       }
     }
+
+    // =========================
+    // 5) Tooltip au survol des stations
+    // =========================
+    const thresholds = {
+      bronze: 3,
+      silver: 6,
+      gold: 12,
+      platinum: 19,
+      diamond: 25,
+    };
+
+    const tooltip = document.getElementById("regularity-tooltip");
+    const stationsRoot2 = document.getElementById("regularity-stations");
+    const stationEls = stationsRoot2
+      ? stationsRoot2.querySelectorAll(".station")
+      : [];
+
+    function tierLabel(t) {
+      const map = {
+        bronze: "Bronze",
+        silver: "Argent",
+        gold: "Or",
+        platinum: "Platine",
+        diamond: "Diamant",
+      };
+      return map[t] || t;
+    }
+
+    if (tooltip && stationEls.length) {
+      stationEls.forEach((el) => {
+        const t = el.dataset.tier;
+        const needed = thresholds[t];
+
+        el.addEventListener("mousemove", (ev) => {
+          if (!needed) return;
+
+          const remaining = Math.max(0, needed - activeDays);
+
+          let line1 = `${tierLabel(t)} — ${needed} jour${needed > 1 ? "s" : ""}`;
+          let line2 = "";
+
+          if (activeDays >= needed) {
+            line2 = "✅ Palier atteint";
+          } else {
+            line2 = `Encore ${remaining} jour${remaining > 1 ? "s" : ""} pour l’atteindre 💪`;
+          }
+
+          tooltip.innerHTML = `<strong>${line1}</strong><br>${line2}`;
+          tooltip.style.display = "block";
+          tooltip.style.left = ev.clientX + "px";
+          tooltip.style.top = ev.clientY + "px";
+        });
+
+        el.addEventListener("mouseleave", () => {
+          tooltip.style.display = "none";
+        });
+      });
+    }
+
   } catch (e) {
     console.warn("Regularity not loaded", e);
   }

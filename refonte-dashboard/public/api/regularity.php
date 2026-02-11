@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config/supabase.php';
 require_once __DIR__ . '/../../includes/functions.php';
-require_once __DIR__ . '/session_check.php'; // vérifie la session et fournit $currentUserId
+require_once __DIR__ . '/session_check.php'; // fournit $currentUserId
 
 header('Content-Type: application/json');
 
@@ -10,30 +10,29 @@ try {
         throw new Exception('Not authenticated');
     }
 
-    // Date du mois courant (Europe/Paris)
+    // Mois courant (Europe/Paris)
     $tz = new DateTimeZone('Europe/Paris');
     $now = new DateTime('now', $tz);
-    $monthStart = $now->format('Y-m-01');
-    $monthEnd = $now->format('Y-m-t');
-
+    $monthStart = $now->format('Y-m-01'); // ex: 2026-02-01
 
     $supabase = new SupabaseClient();
 
-    // Compter les jours actifs du mois
+    // ✅ Lire le compteur depuis la VUE (1 ligne attendue)
     $rows = $supabase->select(
-        'daily_activity',
-        'activity_date',
+        'view_monthly_regularity',
+        'active_days',
         [
             'user_id' => "eq.$currentUserId",
-            'activity_date' => "gte.$monthStart",
-            'activity_date' => "lte.$monthEnd",
-            'is_active' => "eq.true"
+            'month_start' => "eq.$monthStart",
         ]
     );
 
-    $activeDays = $rows ? count($rows) : 0;
+    $activeDays = 0;
+    if ($rows && count($rows) > 0) {
+        $activeDays = (int)($rows[0]['active_days'] ?? 0);
+    }
 
-    // Définition des paliers
+    // Paliers
     $tiers = [
         'bronze'   => 3,
         'silver'   => 6,
@@ -48,10 +47,7 @@ try {
     foreach ($tiers as $tier => $minDays) {
         if ($activeDays >= $minDays) {
             $currentTier = $tier;
-        } elseif ($currentTier !== null && $nextTier === null) {
-            $nextTier = $tier;
-            break;
-        } elseif ($currentTier === null) {
+        } else {
             $nextTier = $tier;
             break;
         }

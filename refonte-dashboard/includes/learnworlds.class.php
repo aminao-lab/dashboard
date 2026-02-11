@@ -80,28 +80,49 @@ class LearnWorlds
 
         $ch = curl_init($url);
         $this->configureCurl($ch);
+
         curl_setopt($ch, CURLOPT_HTTPHEADER, $this->getHeaders());
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
 
         if ($method === 'POST') {
-            curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         }
 
-        $response = curl_exec($ch);
+        $response  = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_err  = curl_error($ch);
+
         curl_close($ch);
+
+        // Logs debug
+        logMessage("LW URL: " . $url);
+        logMessage("LW HTTP: " . $http_code);
+        logMessage("LW CURL_ERR: " . ($curl_err ?: "none"));
+        logMessage("LW BODY: " . substr((string)$response, 0, 300));
+
+        if ($response === false) {
+            throw new Exception("cURL Error: " . $curl_err);
+        }
 
         if ($http_code === 404) {
             return null;
         }
 
-        if ($http_code !== 200) {
-            error_log("❌ LearnWorlds API error ($http_code): " . substr($response, 0, 200));
+        if ($http_code < 200 || $http_code >= 300) {
+            error_log("❌ LearnWorlds API error ($http_code): " . substr((string)$response, 0, 200));
             throw new Exception("API Error $http_code");
         }
 
-        return json_decode($response, true);
+        $json = json_decode((string)$response, true);
+
+        // Optionnel : log si JSON invalide
+        if ($json === null && json_last_error() !== JSON_ERROR_NONE) {
+            logMessage("LW JSON ERROR: " . json_last_error_msg());
+        }
+
+        return $json;
     }
+
 
     public function getUsers($page = 1, $perPage = 100)
     {
@@ -163,6 +184,8 @@ class LearnWorlds
     public function getUserTimeByLevel($userId)
     {
         $progress = $this->getUserProgress($userId);
+        logMessage("LW PROGRESS KEYS: " . json_encode(array_keys($progress ?? [])));
+
 
         if (!$progress || !isset($progress['data'])) {
             return array_fill_keys(NIVEAUX, 0);
@@ -235,4 +258,14 @@ class LearnWorlds
 
         return $result;
     }
+
+
+    public function getUsersCourses($userId){
+        return $this->makeRequest("/users/{$userId}/courses");
+    }
+
+    public function debugRequest($endpoint){
+        return $this->makeRequest($endpoint);
+    }
 }
+

@@ -529,3 +529,49 @@ h2 {
 #regularity .muted {
     font-size: 13px;
 }
+
+/* Positionnement tooltip par station */
+.regularity-stations.v2 .station {
+  position: relative;
+}
+
+/* Tooltip cachée par défaut */
+.regularity-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: 135%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 80ms ease;
+  z-index: 50;
+}
+
+/* Petite flèche */
+.regularity-tooltip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  transform: translateX(-50%);
+  border-width: 6px 6px 0 6px;
+  border-style: solid;
+  border-color: var(--ink) transparent transparent transparent;
+}
+
+/* Affichage UNIQUEMENT quand hover trophée OU point */
+.station-icon:hover + .station-marker + .station-label + .regularity-tooltip,
+.station-marker:hover + .station-label + .regularity-tooltip {
+  opacity: 1;
+}
+
+
+
+
