@@ -41,5 +41,5 @@ jobs:
           APP_SESSION_SECRET: ${{ secrets.APP_SESSION_SECRET }}
         run: |
           php -v  # Juste pour vérifier que PHP marche
-          php refonte-dashboard/sync/aggregate.php
+          php refonte-dashboard/sync/sync_daily_activity.php
 
