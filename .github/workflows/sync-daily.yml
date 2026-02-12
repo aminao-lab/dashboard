@@ -1,0 +1,31 @@
+name: ⚡ Sync Daily Activity + Progression
+on:
+  schedule:
+    - cron: "0 1 * * *" # 1h00 CET (deltas + badges)
+  workflow_dispatch:
+
+concurrency:
+  group: sync-daily-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+
+      - name: ⚡ Daily Activity
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: cd refonte-dashboard/sync && php sync_daily_activity.php
+
+      - name: 🏅 Progression (optionnel)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: cd refonte-dashboard/sync && php sync_progression.php || echo "🏅 Progression ignorée"

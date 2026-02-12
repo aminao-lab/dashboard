@@ -23,7 +23,7 @@ jobs:
           find . -maxdepth 6 -type f -name "sync_daily_activity.php" -print
           echo "---- find sync dir ----"
           find . -maxdepth 5 -type d -name "sync" -print
-        
+
       # Étape 2 : Installer PHP 8.2
       - name: Setup PHP
         uses: shivammathur/setup-php@v2

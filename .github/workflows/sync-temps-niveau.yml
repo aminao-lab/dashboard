@@ -1,0 +1,27 @@
+name: 📊 Sync Temps Niveau
+on:
+  schedule:
+    - cron: "45 0 * * *" # 00h45 CET (cumuls LW)
+  workflow_call: # Réutilisable
+  workflow_dispatch:
+
+concurrency:
+  group: sync-temps-niveau-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30 # 1654 users = 20min
+    steps:
+      # Même structure que sync-students mais :
+      - name: 📊 Sync CRITIQUE
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          LW_API_TOKEN: ${{ secrets.LW_API_TOKEN }}
+        run: |
+          cd refonte-dashboard/sync
+          echo "📊 Temps niveau avant: $(php -r 'require \"../config/supabase.php\"; echo count((new SupabaseClient())->selectAll(\"temps_niveau\"));')"
+          php sync_temps_niveau.php
+          echo "📊 Temps niveau après: $(php -r 'require \"../config/supabase.php\"; echo count((new SupabaseClient())->selectAll(\"temps_niveau\"));')"

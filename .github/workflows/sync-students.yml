@@ -1,0 +1,26 @@
+---
+name: 👥 Sync Students LearnWorlds
+on:
+  schedule:
+    - cron: "20 0 * * *"
+  workflow_dispatch:
+concurrency:
+  group: sync-students-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+      - name: 🔄 Sync Students
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          LW_API_TOKEN: ${{ secrets.LW_API_TOKEN }}
+        run: |
+          cd refonte-dashboard/sync
+          php sync_students.php
