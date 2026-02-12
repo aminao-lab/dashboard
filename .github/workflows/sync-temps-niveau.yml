@@ -1,9 +1,9 @@
 name: 📊 Sync Temps Niveau
 on:
+  workflow_dispatch: # Permet de déclencher manuellement depuis l'onglet "Actions" de GitHub
   schedule:
     - cron: "45 0 * * *" # 00h45 CET (cumuls LW)
   workflow_call: # Réutilisable
-  workflow_dispatch:
 
 concurrency:
   group: sync-temps-niveau-${{ github.ref }}
@@ -33,11 +33,7 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           LW_API_TOKEN: ${{ secrets.LW_API_TOKEN }}
         run: |
-<<<<<<< HEAD
           cd sync
           echo "📊 Temps niveau avant: $(php -r 'require \"../config/supabase.php\"; echo count((new SupabaseClient())->selectAll(\"temps_niveau\"));')"
-=======
-          echo "📊 Temps niveau avant: $(php -r 'require \"config/supabase.php\"; echo count((new SupabaseClient())->selectAll(\"temps_niveau\"));')"
->>>>>>> 2cf6300 (fix : sync-temps-niveau)
           php sync_temps_niveau.php
           echo "📊 Temps niveau après: $(php -r 'require \"config/supabase.php\"; echo count((new SupabaseClient())->selectAll(\"temps_niveau\"));')"
