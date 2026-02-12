@@ -45,6 +45,10 @@ function sb_get(string $path): array {
   return is_array($json) ? $json : [];
 }
 
+// A garder temporairement pour debug (vérifier que les données sont correctes avant upsert)
+file_put_contents('debug_rows.json', json_encode($rows, JSON_PRETTY_PRINT));
+echo "[DEBUG] Check debug_rows.json\n"; exit;
+
 function sb_upsert(string $table, array $rows): void {
   global $SUPABASE_URL;
 
@@ -54,7 +58,7 @@ function sb_upsert(string $table, array $rows): void {
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_CUSTOMREQUEST => "POST",
     CURLOPT_POSTFIELDS => json_encode($rows),
-    CURLOPT_HTTPHEADER => sb_headers(["Prefer: resolution=merge-duplicates"]),
+    CURLOPT_HTTPHEADER => sb_headers(["Prefer: resolution=merge-duplicates", "Prefer: skip-generated-columns=true"]),
     CURLOPT_TIMEOUT => 60,
   ]);
   $res = curl_exec($ch);
@@ -131,9 +135,13 @@ foreach ($temps as $r) {
     'user_id' => $userId,
     'activity_date' => $targetDate,
     'seconds_spent' => $delta,
-    'is_active' => $isActive,
-    'is_initialized' => $isInit,
-  ];
+    ];
+
+    // Debug : log des premiers rows pour vérifier que les données sont correctes avant upsert
+  if (count($activityRows) == 1 ) {
+    file_put_contents('/tmp/debug_payload.json', json_encode($activityRows[0], JSON_PRETTY_PRINT)); 
+    error_log("[DEBUG] Payload saved to /tmp/debug_payload.json");
+  }
 }
 
 // 3) upsert bulk (par paquets pour éviter trop gros payload)
