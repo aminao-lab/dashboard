@@ -15,15 +15,13 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: 🔍 DEBUG - VÉRIFIER ARBORESCENCE
+      - name: 🔄 Sync CRITIQUE Temps Niveau
+        working-directory: ./refonte-dashboard/sync
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          LW_API_TOKEN: ${{ secrets.LW_API_TOKEN }}
         run: |
-          echo "=== PWD ==="
-          pwd
-          echo "=== LS RACINE ==="
-          ls -la
-          echo "=== TROUVER sync_temps_niveau.php ==="
-          find . -name "sync_temps_niveau.php" -type f
-          echo "=== TROUVER supabase.php ==="
-          find . -name "supabase.php" -type f
+          echo "📊 Avant: $(php -r 'require \"config/supabase.php\"; echo count((new SupabaseClient())->selectAll(\"temps_niveau\"));')"
+          php sync_temps_niveau.php
+          echo "📊 Après: $(php -r 'require \"config/supabase.php\"; echo count((new SupabaseClient())->selectAll(\"temps_niveau\"));')"
