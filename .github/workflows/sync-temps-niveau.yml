@@ -16,7 +16,6 @@ jobs:
 
     steps:
       - name: 🔄 Sync CRITIQUE Temps Niveau
-        working-directory: ./refonte-dashboard/sync
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
