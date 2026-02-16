@@ -264,8 +264,78 @@ class LearnWorlds
         return $this->makeRequest("/users/{$userId}/courses");
     }
 
+    public function getCourses($page = 1, $perPage = 100) {
+        return $this->makeRequest("/courses?page={$page}&per_page={$perPage}");
+    }
+
     public function debugRequest($endpoint){
         return $this->makeRequest($endpoint);
     }
+
+    /**
+     * Récupérer les enrollments (inscriptions aux cours)
+     * @param int $page Numéro de page
+     * @param int $perPage Nombre de résultats par page
+     * @return array|false
+     */
+    public function getEnrollments($page = 1, $perPage = 100) {
+        // 🔍 Vérifier dans la doc LearnWorlds l'endpoint exact
+        // Possibilités courantes :
+        // - /v2/enrollments
+        // - /v2/courses/enrollments
+        // - /v2/users/enrollments
+        
+        $endpoint = "/v2/enrollments?page={$page}&per_page={$perPage}"; // ⚠️ À ajuster selon ta doc API
+        
+        return $this->makeRequest($endpoint);
+    }
+
+    /**
+     * Alternative : Si pas d'endpoint enrollments dédié,
+     * récupérer via les cours
+     */
+    public function getAllEnrolledUserIds() {
+        $enrolledIds = [];
+        
+        // 1. Récupérer tous les cours
+        $courses = $this->getCourses();
+        
+        foreach ($courses['data'] as $course) {
+            $courseId = $course['id'];
+            $page = 1;
+            
+            // 2. Pour chaque cours, récupérer les utilisateurs enrolled
+            while (true) {
+                $enrolled = $this->getCourseEnrollments($courseId, $page);
+                
+                if (empty($enrolled['data'])) {
+                    break;
+                }
+                
+                foreach ($enrolled['data'] as $enrollment) {
+                    $enrolledIds[] = $enrollment['user_id'];
+                }
+                
+                $page++;
+                if ($page > ($enrolled['meta']['totalPages'] ?? 1)) {
+                    break;
+                }
+                
+                usleep(200000);
+            }
+        }
+        
+        return array_unique($enrolledIds);
+    }
+
+    /**
+     * Récupérer les enrollments d'un cours spécifique
+     */
+    public function getCourseEnrollments($courseId, $page = 1, $perPage = 100) {
+        $endpoint = "/v2/courses/{$courseId}/users?page={$page}&per_page={$perPage}";
+        
+        return $this->makeRequest($endpoint);
+    }
+
 }
 

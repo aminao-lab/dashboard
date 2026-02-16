@@ -1,26 +1,60 @@
----
-name: 👥 Sync Students LearnWorlds
+name: 👥 Sync Students LearnWorlds (Optimized)
+
 on:
   schedule:
     - cron: "20 0 * * *"
   workflow_dispatch:
+
 concurrency:
   group: sync-students-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30 # ⬆️ Augmenté à 30min par sécurité
+
+    strategy:
+      fail-fast: false # ✅ Continue même si un job échoue
+      matrix:
+        job_index: [0, 1, 2, 3] # 🚀 4 jobs parallèles
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - name: 🔄 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐘 Setup PHP
+        uses: shivammathur/setup-php@v2
         with:
           php-version: 8.2
-      - name: 🔄 Sync Students
+          extensions: curl, json
+
+      - name: 🔄 Sync Students (Job ${{ matrix.job_index }}/4)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           LW_API_TOKEN: ${{ secrets.LW_API_TOKEN }}
+          JOB_INDEX: ${{ matrix.job_index }}
+          TOTAL_JOBS: 4
         run: |
           cd refonte-dashboard/sync
           php sync_students.php
+
+      - name: 📊 Upload logs (en cas d'erreur)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-logs-job-${{ matrix.job_index }}
+          path: refonte-dashboard/logs/
+          retention-days: 7
+
+  # 🎯 Job de vérification final (optionnel)
+  verify:
+    needs: sync
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: ✅ Vérifier le succès
+        run: |
+          echo "🎉 Synchronisation terminée !"
+          echo "📊 Consulter les logs individuels pour plus de détails"

@@ -193,4 +193,43 @@ class SupabaseClient
 
         return $http_code === 204 || $http_code === 200;
     }
+    /**
+     * Upsert en masse (batch)
+     * @param string $table Nom de la table
+     * @param array $rows Tableau de lignes à insérer [{col1: val1, ...}, ...]
+     * @param string $onConflict Colonne de conflit (clé primaire)
+     * @return bool|array
+     */
+    public function batchUpsert($table, $rows, $onConflict) {
+        if (empty($rows)) {
+            return true;
+        }
+
+        $url = $this->url . "/rest/v1/{$table}";
+        
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => [
+                "apikey: {$this->key}",
+                "Authorization: Bearer {$this->key}",
+                "Content-Type: application/json",
+                "Prefer: resolution=merge-duplicates"
+            ],
+            CURLOPT_POSTFIELDS => json_encode($rows)
+        ]);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($httpCode >= 200 && $httpCode < 300) {
+            return json_decode($response, true);
+        }
+        
+        error_log("Batch upsert error: HTTP {$httpCode} - {$response}");
+        return false;
+    }
+
 }
