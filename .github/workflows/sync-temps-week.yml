@@ -1,0 +1,33 @@
+name: 📅 Sync Temps Semaine
+on:
+  schedule:
+    - cron: "0 2 * * 1" # Lundi 2h (début semaine)
+  workflow_dispatch:
+
+concurrency:
+  group: sync-temps-semaine-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15 # Sécurité
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 🐘 PHP 8.2 + Extensions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+
+      - name: 🔄 Sync + Monitoring
+        working-directory: ./refonte-dashboard/sync
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          LW_API_TOKEN: ${{ secrets.LW_API_TOKEN }}
+        run: |
+          echo "📊 AVANT sync_temps_week: $(php -r 'require \"config/supabase.php\"; echo count((new SupabaseClient())->selectAll(\"temps_week\"));')"  # ✅ CORRIGÉ "temps_week"
+          php sync_temps_semaine.php
+          echo "📊 APRÈS sync_temps_week: $(php -r 'require \"config/supabase.php\"; echo count((new SupabaseClient())->selectAll(\"temps_week\"));')"
