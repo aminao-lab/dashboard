@@ -29,5 +29,5 @@ jobs:
           LW_API_TOKEN: ${{ secrets.LW_API_TOKEN }}
         run: |
           echo "📊 AVANT sync_temps_week: $(php -r 'require \"config/supabase.php\"; echo count((new SupabaseClient())->selectAll(\"temps_week\"));')"  # ✅ CORRIGÉ "temps_week"
-          php sync_temps_semaine.php
+          php sync_temps_week.php
           echo "📊 APRÈS sync_temps_week: $(php -r 'require \"config/supabase.php\"; echo count((new SupabaseClient())->selectAll(\"temps_week\"));')"
