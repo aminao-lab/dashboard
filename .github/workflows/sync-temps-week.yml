@@ -40,7 +40,7 @@ jobs:
           JOB_INDEX: ${{ matrix.job_index }}
           TOTAL_JOBS: 4
         run: |
-          cd refonte-dashboard/sync
+          cd refonte-dashboard/logs
           php sync_temps_week.php
 
       - name: End Timer
