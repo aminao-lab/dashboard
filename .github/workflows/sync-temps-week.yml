@@ -11,7 +11,7 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 15 # Sécurité
+    timeout-minutes: 30 # Sécurité
 
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +20,9 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
+
+      - name: Start Timer
+        run: date +%s > /tmp/start.txt
 
       - name: 🔄 Sync + Monitoring
         working-directory: ./refonte-dashboard/sync
@@ -31,3 +34,9 @@ jobs:
           echo "📊 AVANT sync_temps_week: $(php -r 'require \"config/supabase.php\"; echo count((new SupabaseClient())->selectAll(\"temps_week\"));')"  # ✅ CORRIGÉ "temps_week"
           php sync_temps_week.php
           echo "📊 APRÈS sync_temps_week: $(php -r 'require \"config/supabase.php\"; echo count((new SupabaseClient())->selectAll(\"temps_week\"));')"
+
+      - name: End Timer
+        run: |
+          START=$(cat /tmp/start.txt)
+          END=$(date +%s)
+          echo "⏱️ Durée du job: $((END - START)) secondes"
