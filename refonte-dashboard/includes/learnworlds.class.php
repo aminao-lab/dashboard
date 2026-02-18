@@ -320,8 +320,6 @@ class LearnWorlds
                 if ($page > ($enrolled['meta']['totalPages'] ?? 1)) {
                     break;
                 }
-                
-                usleep(200000);
             }
         }
         

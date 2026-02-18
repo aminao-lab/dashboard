@@ -70,8 +70,8 @@ for ($i = 0; $i < $totalStudents; $i++) {
         }
 
         // Sleep réduit : tous les 10 élèves au lieu de 5
-        if ($processedCount % 10 === 0) {
-            usleep(500000); // 0.5s
+        if ($processedCount % 20 === 0) {
+            usleep(100000); // 0.5s
             logMessage("⏳ Job {$jobIndex}: {$processedCount} élèves traités...");
         }
 

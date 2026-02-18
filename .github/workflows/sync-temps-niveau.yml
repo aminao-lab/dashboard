@@ -13,12 +13,14 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     strategy:
       fail-fast: false
       matrix:
-        job_index: [0, 1, 2, 3]
+        job_index: [0, 1, 2, 3, 4, 5]
+    env:
+      TOTAL_JOBS: 6
 
     steps:
       - name: 🔄 Checkout code
