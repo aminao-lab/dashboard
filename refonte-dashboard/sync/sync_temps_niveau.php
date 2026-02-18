@@ -3,25 +3,16 @@ require_once __DIR__ . '/../config/supabase.php';
 require_once __DIR__ . '/../includes/learnworlds.class.php';
 require_once __DIR__ . '/../includes/functions.php';
 
-$envFile = __DIR__ . '/.env'; 
-if (file_exists($envFile)) { 
-  $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES); 
-  foreach ($lines as $line) {
-    if (strpos(trim($line), '#') === 0) continue; // Ignorer les "#"
-    [$name, $value] = explode('=', $line, 2);
-    putenv("$name=$value");
-  }
-}
+// 🎯 Paramètres de parallélisation
+$jobIndex = (int)($_ENV['JOB_INDEX'] ?? 0);
+$totalJobs = (int)($_ENV['TOTAL_JOBS'] ?? 1);
 
-if (!getenv('SUPABASE_URL') || !getenv('SUPABASE_SERVICE_KEY')) {
-  die("!! .env manquant ou SUPABASE_URL / SUPABASE_SERVICE_KEY non définis\n"); 
-}
-
-logMessage("=== DÉBUT SYNC TEMPS_NIVEAU ===");
+logMessage("=== DÉBUT SYNC TEMPS_NIVEAU JOB {$jobIndex}/{$totalJobs} ===");
 
 $supabase = new SupabaseClient();
 $lw = new LearnWorlds();
 
+// ÉTAPE 1 : Récupérer TOUS les élèves
 $students = $supabase->selectAll('students', 'user_id,email', [], 'user_id.asc');
 
 if (!$students || count($students) === 0) {
@@ -30,25 +21,29 @@ if (!$students || count($students) === 0) {
 }
 
 $totalStudents = count($students);
-$startIndex = getBatchProgress('temps_niveau_index') ?: 0;
+logMessage("📊 Total élèves : {$totalStudents}");
 
-logMessage("📊 Total élèves : {$totalStudents}, Index : {$startIndex}");
+// ÉTAPE 2 : Traitement par batch avec distribution
+$batchBuffer = [];
+$BATCH_SIZE = 100;
+$processedCount = 0;
 
-$endIndex = min($startIndex + BATCH_SIZE, $totalStudents);
+for ($i = 0; $i < $totalStudents; $i++) {
+    // Distribution : ce job traite uniquement les élèves assignés
+    if ($i % $totalJobs !== $jobIndex) {
+        continue;
+    }
 
-for ($i = $startIndex; $i < $endIndex; $i++) {
     $student = $students[$i];
     $userId = $student['user_id'];
     $email = $student['email'] ?? 'N/A';
-    $currentNum = $i + 1;
 
     try {
-        logMessage("⏳ [{$currentNum}/{$totalStudents}] {$email}...");
-
+        // Appel API pour récupérer les temps par niveau
         $timeData = $lw->getUserTimeByLevel($userId);
 
-        // On écrit quand même (même si tout est à 0) => utile pour la régularité ensuite
-        $row = [
+        // Ajouter au buffer
+        $batchBuffer[] = [
             'user_id' => $userId,
             '6eme' => $timeData['6eme'] ?? 0,
             '5eme' => $timeData['5eme'] ?? 0,
@@ -60,18 +55,24 @@ for ($i = $startIndex; $i < $endIndex; $i++) {
             'term-pc' => $timeData['term-pc'] ?? 0
         ];
 
-        // UPSERT direct (pas de select/update)
-        // Selon ton wrapper, il peut falloir passer un tableau de lignes
-        $result = $supabase->upsert('temps_niveau', $row);
+        $processedCount++;
 
-        if ($result === false) {
-            logMessage("⚠️ Upsert KO pour {$userId}", 'WARNING');
-        } else {
-            logMessage("✅ Upsert OK pour {$email}");
+        // 🚀 Insertion par batch de 100
+        if (count($batchBuffer) >= $BATCH_SIZE) {
+            $result = $supabase->batchUpsert('temps_niveau', $batchBuffer, 'user_id');
+            if ($result !== false) {
+                logMessage("✅ Batch de " . count($batchBuffer) . " insérés (Job {$jobIndex})");
+            } else {
+                logMessage("⚠️ Erreur batch insertion", 'WARNING');
+            }
+            $batchBuffer = [];
+            usleep(200000); // 0.2s entre batch
         }
 
-        if ($i % 5 === 0) {
-            sleep(API_DELAY);
+        // Sleep réduit : tous les 10 élèves au lieu de 5
+        if ($processedCount % 10 === 0) {
+            usleep(500000); // 0.5s
+            logMessage("⏳ Job {$jobIndex}: {$processedCount} élèves traités...");
         }
 
     } catch (Exception $e) {
@@ -79,12 +80,13 @@ for ($i = $startIndex; $i < $endIndex; $i++) {
     }
 }
 
-if ($endIndex < $totalStudents) {
-    setBatchProgress('temps_niveau_index', $endIndex);
-    logMessage("⏸️ Progression : {$endIndex}/{$totalStudents}");
-} else {
-    clearBatchProgress('temps_niveau_index');
-    logMessage("🎉 Terminé ({$totalStudents}/{$totalStudents}) !");
+if (!empty($batchBuffer)) {
+    $result = $supabase->batchUpsert('temps_niveau', $batchBuffer, 'user_id');
+    if ($result !== false) {
+        logMessage("✅ Dernier batch de " . count($batchBuffer) . " insérés");
+    }
 }
 
-logMessage("=== FIN SYNC TEMPS_NIVEAU ===");
+logMessage("📈 STATISTIQUES JOB {$jobIndex}:");
+logMessage("   • Élèves traités : {$processedCount}");
+logMessage("=== FIN SYNC TEMPS_NIVEAU JOB {$jobIndex} ===\n");
