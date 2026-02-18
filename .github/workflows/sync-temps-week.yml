@@ -32,7 +32,7 @@ jobs:
         run: echo "START_TIME=$(date +%s)" >> $GITHUB_ENV
 
       - name: 🔄 Sync Temps Week (Job ${{ matrix.job_index }} /4)
-        working-directory: ./refonte-dashboard/sync
+        working-directory: ./refonte-dashboard/logs
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
@@ -55,7 +55,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sync-logs-job-${{ matrix.job_index }}
-          path: ./refonte-dashboard/sync/logs/
+          path: ./refonte-dashboard/logs/
           retention-days: 7
 
   # Job de vérification final
@@ -74,7 +74,7 @@ jobs:
           php-version: "8.2"
 
       - name: Vérification finale
-        working-directory: ./refonte-dashboard/sync
+        working-directory: ./refonte-dashboard/logs
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
