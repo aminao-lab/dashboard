@@ -1,5 +1,7 @@
 <?php
 
+// Include database functions
+require_once __DIR__ . '/../includes/database.php';
 
 // Configuration LearnWorlds API
 define('LW_BASE_URL', 'https://academy.dphialpha.fr/admin/api/v2');
@@ -54,3 +56,27 @@ if ($isCli || $serverName === 'localhost') { // si en CLI ou localhost
 // Timeout
 set_time_limit(MAX_EXECUTION_TIME);
 ini_set('memory_limit', '512M');
+
+function getLatestWeeksPerUser($weekLimit) {
+    // TODO: Implement the select function in database.php or replace with your database query method
+    // $allWeeks = select('temps_week', '*', [
+    //     'semaine' => "lt.{$weekLimit}"
+    // ], [
+    //     'order' => 'semaine.desc'
+    // ]);
+    $allWeeks = [];
+    
+    if (!$allWeeks || count($allWeeks) === 0) {
+        return [];
+    }
+    
+    $latestWeeks = [];
+    foreach ($allWeeks as $week) {
+        $userId = $week['user_id'];
+        if (!isset($latestWeeks[$userId])) {
+            $latestWeeks[$userId] = $week;
+        }
+    }
+    
+    return $latestWeeks;
+}
