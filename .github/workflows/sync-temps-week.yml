@@ -1,7 +1,8 @@
 name: 📅 Sync Temps Semaine
+
 on:
   schedule:
-    - cron: "0 2 * * 1" # Lundi 2h (début semaine)
+    - cron: "0 2 * * 1"
   workflow_dispatch:
 
 concurrency:
@@ -11,28 +12,27 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 30 # Sécurité
+    timeout-minutes: 30
 
     strategy:
       fail-fast: false
       matrix:
-        job_index: [0, 1, 2, 3, 4]
+        job_index: [0, 1, 2, 3]
 
     steps:
       - name: 🔄 Checkout code
         uses: actions/checkout@v4
 
-      - name: 🐘 PHP 8.2 + Extensions
+      - name: 🐘 Setup PHP 8.2
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
           extensions: curl, json
 
-      - name: Start Timer
+      - name: ⏱️ Start Timer
         run: echo "START_TIME=$(date +%s)" >> $GITHUB_ENV
 
-      - name: 🔄 Sync Temps Week (Job ${{ matrix.job_index }} /4)
-        working-directory: ./refonte-dashboard/sync/
+      - name: 🔄 Sync Temps Week (Job ${{ matrix.job_index }}/4)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
@@ -40,24 +40,25 @@ jobs:
           JOB_INDEX: ${{ matrix.job_index }}
           TOTAL_JOBS: 4
         run: |
-          cd refonte-dashboard/sync/
+          cd refonte-dashboard/sync
           php sync_temps_week.php
 
-      - name: End Timer
+      - name: ⏱️ End Timer
         if: always()
         run: |
           END_TIME=$(date +%s)
           DURATION=$((END_TIME - START_TIME))
-          echo "⏱️ Durée du job:${{matrix.job_index}} : $DURATION sec"
-      - name: Upload logs ( en cas d'erreur )
+          echo "⏱️ Durée Job ${{ matrix.job_index }}: ${DURATION}s"
+
+      - name: 📊 Upload logs (en cas d'erreur)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: sync-logs-job-${{ matrix.job_index }}
-          path: refonte-dashboard/sync/
+          path: refonte-dashboard/logs/
+          if-no-files-found: ignore
           retention-days: 7
 
-  # Job de vérification final
   verify:
     needs: sync
     runs-on: ubuntu-latest
@@ -67,15 +68,19 @@ jobs:
       - name: 🔄 Checkout code
         uses: actions/checkout@v4
 
-      - name: 🐘 PHP 8.2 + Extensions
+      - name: 🐘 Setup PHP 8.2
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
 
-      - name: Vérification finale
-        working-directory: refonte-dashboard/sync/
+      - name: 📊 Statistiques finales
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
-          echo "📊 Total lignes temps_week: $(php -r 'require \"config/supabase.php\"; echo count((new SupabaseClient())->selectAll(\"temps_week\"));')"
+          cd refonte-dashboard/sync
+          TOTAL=$(php -r "require '../config/supabase.php'; echo count((new SupabaseClient())->selectAll('temps_week'));")
+          echo "📊 Total lignes temps_week: ${TOTAL}"
+
+      - name: ✅ Résumé
+        run: echo "🎉 Synchronisation hebdomadaire terminée !"
