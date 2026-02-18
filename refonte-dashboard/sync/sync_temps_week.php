@@ -25,11 +25,11 @@ logMessage("📅 Semaine : {$isoWeek}");
 logMessage("📅 Période : {$weekRange['monday']} → {$weekRange['sunday']}");
 
 $totalStudents = count($students);
-$startIndex = getBatchProgress('temps_week_index') ?: 0;
+$startIndex = 0; // getBatchProgress('temps_week_index') ?: 0; --> reprend la ou le script s'est arreté 
 
 logMessage("📊 Total élèves : {$totalStudents}, Index : {$startIndex}");
 
-$endIndex = min($startIndex + BATCH_SIZE, $totalStudents);
+$endIndex = $totalStudents; // min($startIndex + BATCH_SIZE, $totalStudents);
 
 for ($i = $startIndex; $i < $endIndex; $i++) {
     $student = $students[$i];
@@ -126,12 +126,13 @@ for ($i = $startIndex; $i < $endIndex; $i++) {
     }
 }
 
-if ($endIndex < $totalStudents) {
+/*  if ($endIndex < $totalStudents) {
     setBatchProgress('temps_week_index', $endIndex);
     logMessage("⏸️ Progression : {$endIndex}/{$totalStudents}");
 } else {
     clearBatchProgress('temps_week_index');
     logMessage("🎉 Terminé ({$totalStudents}/{$totalStudents}) !");
 }
-
+*/
+logMessage("{$totalStudents}/{$totalStudents} élèves traités.");
 logMessage("=== FIN SYNC TEMPS_WEEK ===\n");
