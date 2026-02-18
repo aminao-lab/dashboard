@@ -1,7 +1,9 @@
 <?php
 
 // Include database functions
-require_once __DIR__ . '/../includes/database.php';
+if (file_exists(__DIR__ . '/../includes/database.php')) {
+    require_once __DIR__ . '/../includes/database.php';
+}
 
 // Configuration LearnWorlds API
 define('LW_BASE_URL', 'https://academy.dphialpha.fr/admin/api/v2');
