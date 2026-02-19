@@ -16,13 +16,15 @@ if (!$students || count($students) === 0) {
 }
 
 $totalStudents = count($students);
-$startIndex = getBatchProgress('progression_index') ?: 0;
+// $startIndex = getBatchProgress('progression_index') ?: 0;
+$startIndex = 0; // Toujours à 0 pour ce job de progression
 
 logMessage("📊 Total élèves : {$totalStudents}, Index : {$startIndex}");
 
-$endIndex = min($startIndex + BATCH_SIZE, $totalStudents);
+// $endIndex = min($startIndex + BATCH_SIZE, $totalStudents);
+$endIndex = $totalStudents; // Traiter tous les élèves à chaque run
 
-for ($i = $startIndex; $i < $endIndex; $i++) {
+for ($i = $startIndex; $i < $totalStudents; $i++) {
     $student = $students[$i];
     $userId = $student['user_id'];  // ✅ user_id directement
     $email = $student['email'] ?? 'N/A';
@@ -81,12 +83,13 @@ for ($i = $startIndex; $i < $endIndex; $i++) {
     }
 }
 
-if ($endIndex < $totalStudents) {
+/*if ($endIndex < $totalStudents) {
     setBatchProgress('progression_index', $endIndex);
     logMessage("⏸️ Progression : {$endIndex}/{$totalStudents}");
 } else {
     clearBatchProgress('progression_index');
     logMessage("🎉 Terminé ({$totalStudents}/{$totalStudents}) !");
-}
+}*/
 
+logMessage("🎉 Terminé ({$totalStudents}/{$totalStudents}) !");
 logMessage("=== FIN SYNC PROGRESSION ===\n");

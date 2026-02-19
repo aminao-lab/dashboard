@@ -1,7 +1,7 @@
 name: ⚡ Sync Daily Activity + Progression
 on:
   schedule:
-    - cron: "0 1 * * *" # 1h00 CET (deltas + badges)
+    - cron: "20 1 * * *" # 1h00 CET (deltas + badges)
   workflow_dispatch:
 
 concurrency:
@@ -11,7 +11,7 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2

@@ -2,7 +2,7 @@ name: 👥 Sync Students LearnWorlds (Optimized)
 
 on:
   schedule:
-    - cron: "20 0 * * *"
+    - cron: "05 0 * * *"
   workflow_dispatch:
 
 concurrency:
