@@ -200,12 +200,19 @@ class SupabaseClient
      * @param string $onConflict Colonne de conflit (clé primaire)
      * @return bool|array
      */
-    public function batchUpsert($table, $rows, $onConflict) {
+    public function batchUpsert($table, $rows, $onConflict = null) {
         if (empty($rows)) {
             return true;
         }
 
-        $url = $this->url . "/rest/v1/{$table}";
+        // ✅ Construction URL correcte
+        $baseUrl = rtrim($this->url, '/');
+        
+        if (strpos($baseUrl, '/rest/v1') !== false) {
+            $url = $baseUrl . "/{$table}";
+        } else {
+            $url = $baseUrl . "/rest/v1/{$table}";
+        }
         
         $ch = curl_init($url);
         curl_setopt_array($ch, [
@@ -215,7 +222,7 @@ class SupabaseClient
                 "apikey: {$this->key}",
                 "Authorization: Bearer {$this->key}",
                 "Content-Type: application/json",
-                "Prefer: resolution=merge-duplicates"
+                "Prefer: resolution=merge-duplicates"  // Upsert ici, pas dans l'URL
             ],
             CURLOPT_POSTFIELDS => json_encode($rows)
         ]);

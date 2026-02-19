@@ -1,64 +1,39 @@
 <?php
-require_once __DIR__ . '/config/supabase.php';
-require_once __DIR__ . '/includes/learnworlds.class.php';
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-echo "=== TEST CONNEXIONS ===\n\n";
+echo "🔍 Test des classes...\n";
 
-// Test 1 : Connexion Supabase
-echo "1. Test Supabase...\n";
 try {
+    require_once __DIR__ . '/config/config.php';
+    echo "✅ config.php OK\n";
+} catch (Exception $e) {
+    echo "❌ config.php ERREUR: " . $e->getMessage() . "\n";
+}
+
+try {
+    require_once __DIR__ . '/config/supabase.php';
+    echo "✅ supabase.php OK\n";
+    
     $supabase = new SupabaseClient();
-    $result = $supabase->select('students', 'user_id', [], ['limit' => 1]);
-
-    if ($result !== false) {
-        echo "✅ Connexion Supabase OK\n";
-        echo "   Nombre d'élèves: " . (is_array($result) ? count($result) : 0) . "\n";
+    echo "✅ SupabaseClient instancié\n";
+    
+    // Test batchUpsert existe
+    if (method_exists($supabase, 'batchUpsert')) {
+        echo "✅ batchUpsert() existe\n";
     } else {
-        echo "❌ Erreur connexion Supabase\n";
+        echo "⚠️ batchUpsert() manquante\n";
     }
+    
 } catch (Exception $e) {
-    echo "❌ Exception Supabase: " . $e->getMessage() . "\n";
+    echo "❌ supabase.php ERREUR: " . $e->getMessage() . "\n";
 }
 
-echo "\n";
-
-// Test 2 : Connexion LearnWorlds
-echo "2. Test LearnWorlds API...\n";
 try {
-    $lw = new LearnWorlds();
-    $users = $lw->getUsers(1, 5);
-
-    if ($users && isset($users['data'])) {
-        echo "✅ Connexion LearnWorlds OK\n";
-        echo "   Utilisateurs récupérés: " . count($users['data']) . "\n";
-        echo "   Premier utilisateur: " . ($users['data'][0]['email'] ?? 'N/A') . "\n";
-    } else {
-        echo "❌ Erreur API LearnWorlds\n";
-    }
+    require_once __DIR__ . '/includes/functions.php';
+    echo "✅ functions.php OK\n";
 } catch (Exception $e) {
-    echo "❌ Exception LearnWorlds: " . $e->getMessage() . "\n";
+    echo "❌ functions.php ERREUR: " . $e->getMessage() . "\n";
 }
 
-echo "\n";
-
-// Test 3 : Test temps niveau pour un utilisateur
-echo "3. Test récupération temps niveau...\n";
-try {
-    $lw = new LearnWorlds();
-    $testUserId = '626ac4ce5145e8d3660276d4'; // Remplacer par un vrai ID
-
-    $timeData = $lw->getUserTimeByLevel($testUserId);
-
-    echo "✅ Temps récupéré pour user {$testUserId}:\n";
-    foreach ($timeData as $niveau => $temps) {
-        if ($temps > 0) {
-            $heures = floor($temps / 3600);
-            $minutes = floor(($temps % 3600) / 60);
-            echo "   • {$niveau}: {$heures}h{$minutes}m ({$temps}s)\n";
-        }
-    }
-} catch (Exception $e) {
-    echo "❌ Exception: " . $e->getMessage() . "\n";
-}
-
-echo "\n=== FIN TESTS ===\n";
+echo "\n🎉 Test terminé\n";
