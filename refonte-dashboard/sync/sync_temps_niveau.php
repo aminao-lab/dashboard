@@ -23,9 +23,8 @@ if (!$students || count($students) === 0) {
 $totalStudents = count($students);
 logMessage("📊 Total élèves : {$totalStudents}");
 
-// ÉTAPE 2 : Traitement par batch avec distribution
-$batchBuffer = [];
-$BATCH_SIZE = 100;
+// ÉTAPE 2 : Accumulation de TOUS les élèves assignés
+$allData = [];
 $processedCount = 0;
 
 for ($i = 0; $i < $totalStudents; $i++) {
@@ -42,8 +41,8 @@ for ($i = 0; $i < $totalStudents; $i++) {
         // Appel API pour récupérer les temps par niveau
         $timeData = $lw->getUserTimeByLevel($userId);
 
-        // Ajouter au buffer
-        $batchBuffer[] = [
+        // Ajouter au tableau global
+        $allData[] = [
             'user_id' => $userId,
             '6eme' => $timeData['6eme'] ?? 0,
             '5eme' => $timeData['5eme'] ?? 0,
@@ -57,21 +56,9 @@ for ($i = 0; $i < $totalStudents; $i++) {
 
         $processedCount++;
 
-        // 🚀 Insertion par batch de 100
-        if (count($batchBuffer) >= $BATCH_SIZE) {
-            $result = $supabase->batchUpsert('temps_niveau', $batchBuffer, 'user_id');
-            if ($result !== false) {
-                logMessage("✅ Batch de " . count($batchBuffer) . " insérés (Job {$jobIndex})");
-            } else {
-                logMessage("⚠️ Erreur batch insertion", 'WARNING');
-            }
-            $batchBuffer = [];
-            usleep(200000); // 0.2s entre batch
-        }
-
-        // Sleep réduit : tous les 10 élèves au lieu de 5
+        // Sleep réduit : tous les 20 élèves
         if ($processedCount % 20 === 0) {
-            usleep(100000); // 0.5s
+            usleep(100000);
             logMessage("⏳ Job {$jobIndex}: {$processedCount} élèves traités...");
         }
 
@@ -80,10 +67,14 @@ for ($i = 0; $i < $totalStudents; $i++) {
     }
 }
 
-if (!empty($batchBuffer)) {
-    $result = $supabase->batchUpsert('temps_niveau', $batchBuffer, 'user_id');
+// 🚀 Insertion UNIQUE de TOUTES les données
+if (!empty($allData)) {
+    logMessage("📤 Insertion de " . count($allData) . " élèves d'un coup...");
+    $result = $supabase->batchUpsert('temps_niveau', $allData, 'user_id');
     if ($result !== false) {
-        logMessage("✅ Dernier batch de " . count($batchBuffer) . " insérés");
+        logMessage("✅ " . count($allData) . " élèves insérés (Job {$jobIndex})");
+    } else {
+        logMessage("❌ Erreur insertion globale", 'ERROR');
     }
 }
 
