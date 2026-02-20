@@ -68,7 +68,7 @@ function sb_upsert(string $table, array $rows): void {
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_CUSTOMREQUEST => "POST",
     CURLOPT_POSTFIELDS => json_encode($rows),
-    CURLOPT_HTTPHEADER => sb_headers(["Prefer: resolution=merge-duplicates,skip-generated-columns=true"]),
+    CURLOPT_HTTPHEADER => sb_headers(["Prefer: resolution=merge-duplicates"]),
     CURLOPT_TIMEOUT => 60,
   ]);
   $res = curl_exec($ch);
@@ -119,7 +119,6 @@ $firstDayOfMonth = (new DateTime($targetDate))->modify('first day of this month'
 $allActiveDays = sb_get(
     '/rest/v1/daily_activity'
     . '?select=user_id,activity_date'
-    . '&is_active=eq.true'
     . '&activity_date=gte.' . rawurlencode($firstDayOfMonth)
     . '&activity_date=lte.' . rawurlencode($targetDate)
 );
@@ -174,7 +173,6 @@ $prevTotal = $prevByUser[$userId] ?? null;
     'user_id' => $userId,
     'activity_date' => $targetDate,
     'seconds_spent' => $delta,
-    'is_active' => $isActive,
     ];
 }
 
