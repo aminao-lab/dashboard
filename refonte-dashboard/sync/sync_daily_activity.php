@@ -59,10 +59,6 @@ function sb_get(string $path): array {
   return is_array($json) ? $json : [];
 }
 
-// A garder temporairement pour debug (vérifier que les données sont correctes avant upsert)
-file_put_contents('debug_rows.json', json_encode($rows, JSON_PRETTY_PRINT));
-echo "[DEBUG] Check debug_rows.json\n"; exit;
-
 function sb_upsert(string $table, array $rows): void {
   global $SUPABASE_URL;
 
@@ -149,6 +145,7 @@ foreach ($temps as $r) {
     'user_id' => $userId,
     'activity_date' => $targetDate,
     'seconds_spent' => $delta,
+    'is_active' => $isActive
     ];
 
     // Debug : log des premiers rows pour vérifier que les données sont correctes avant upsert
