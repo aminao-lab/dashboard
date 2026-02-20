@@ -44,7 +44,10 @@ function sb_get(string $path): array {
   $ch = curl_init(rtrim($SUPABASE_URL, '/') . $path);
   curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER => sb_headers(),
+    CURLOPT_HTTPHEADER => sb_headers([
+        "Range-Unit: items",
+        "Range: 0-9999"  // ← force jusqu'à 10000 lignes
+    ]),
     CURLOPT_TIMEOUT => 60,
   ]);
   $res = curl_exec($ch);
