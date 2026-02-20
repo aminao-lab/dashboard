@@ -4,7 +4,7 @@ $envFile = __DIR__ . '/.env';
 if (file_exists($envFile)) { 
   $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES); 
   foreach ($lines as $line) {
-    if (strpos(trim($line), '#') === 0) continue; // Ignorer les "#"
+    if (strpos(trim($line), '#') === 0) continue;
     [$name, $value] = explode('=', $line, 2);
     putenv("$name=$value");
   }
@@ -44,10 +44,7 @@ function sb_get(string $path): array {
   $ch = curl_init(rtrim($SUPABASE_URL, '/') . $path);
   curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER => sb_headers([
-        "Range-Unit: items",
-        "Range: 0-9999"  // ← force jusqu'à 10000 lignes
-    ]),
+    CURLOPT_HTTPHEADER => sb_headers(),
     CURLOPT_TIMEOUT => 60,
   ]);
   $res = curl_exec($ch);
@@ -62,10 +59,29 @@ function sb_get(string $path): array {
   return is_array($json) ? $json : [];
 }
 
+function sb_get_all(string $path): array {
+  $all    = [];
+  $offset = 0;
+  $limit  = 1000;
+
+  while (true) {
+    $separator = str_contains($path, '?') ? '&' : '?';
+    $batch = sb_get($path . $separator . "limit=$limit&offset=$offset");
+
+    if (empty($batch)) break;
+
+    $all = array_merge($all, $batch);
+
+    if (count($batch) < $limit) break;
+    $offset += $limit;
+  }
+
+  return $all;
+}
+
 function sb_upsert(string $table, array $rows): void {
   global $SUPABASE_URL;
 
-  // upsert bulk
   $ch = curl_init(rtrim($SUPABASE_URL, '/') . "/rest/v1/$table");
   curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
@@ -88,7 +104,7 @@ function i($v): int { return is_numeric($v) ? (int)$v : 0; }
 echo "=== START sync_daily_activity (targetDate=$targetDate) ===\n";
 
 // 1) lire temps_niveau
-$temps = sb_get('/rest/v1/temps_niveau?select=user_id,"6eme","5eme","4eme","3eme","2nde","1ere",term,"term-pc"&limit=10000');
+$temps = sb_get_all('/rest/v1/temps_niveau?select=user_id,"6eme","5eme","4eme","3eme","2nde","1ere",term,"term-pc"');
 
 echo "[INFO] temps_niveau rows=" . count($temps) . "\n";
 if (count($temps) === 0) {
@@ -100,13 +116,12 @@ $snapshotRows = [];
 $activityRows = [];
 
 // Récupérer tous les derniers snapshots en une seule requête
-$allPrevSnapshots = sb_get(
+$allPrevSnapshots = sb_get_all(
     '/rest/v1/daily_cumul_snapshot'
     . '?select=user_id,total_cumul_seconds,snapshot_date'
     . '&snapshot_date=lt.' . rawurlencode($targetDate)
     . '&snapshot_date=gte.' . rawurlencode((new DateTime($targetDate))->modify('-32 days')->format('Y-m-d'))
     . '&order=snapshot_date.desc'
-    . '&limit=10000'
 );
 
 // Indexer par user_id en gardant uniquement le plus récent
@@ -120,12 +135,11 @@ foreach ($allPrevSnapshots as $row) {
 
 $firstDayOfMonth = (new DateTime($targetDate))->modify('first day of this month')->format('Y-m-d');
 
-$allActiveDays = sb_get(
+$allActiveDays = sb_get_all(
     '/rest/v1/daily_activity'
     . '?select=user_id,activity_date'
     . '&activity_date=gte.' . rawurlencode($firstDayOfMonth)
     . '&activity_date=lte.' . rawurlencode($targetDate)
-    . '&limit=10000'
 );
 
 $activeDaysByUser = [];
@@ -151,34 +165,31 @@ foreach ($temps as $r) {
         + i($r['term'] ?? 0)
         + i($r['term-pc'] ?? 0);
 
-  $streakJours = $activeDaysByUser[$userId] ?? 0;
-  $streakMoisPct = $daysInMonth > 0 ? round(($streakJours / $daysInMonth) * 100) : 0;
+  $streakJours   = $activeDaysByUser[$userId] ?? 0;
+  $streakMoisPct = $daysInMonth > 0 ? (int)round(($streakJours / $daysInMonth) * 100) : 0;
 
   // 1) Snapshot du jour cible (J-1)
   $snapshotRows[] = [
-    'user_id' => $userId,
-    'snapshot_date' => $targetDate,
+    'user_id'             => $userId,
+    'snapshot_date'       => $targetDate,
     'total_cumul_seconds' => $total,
-    'streak_jours' => $streakJours,
-    'streak_mois_pct' => $streakMoisPct
+    'streak_jours'        => $streakJours,
+    'streak_mois_pct'     => $streakMoisPct,
   ];
 
   // 2) Snapshot précédent (< targetDate)
-$prevTotal = $prevByUser[$userId] ?? null;
+  $prevTotal = $prevByUser[$userId] ?? null;
 
   // 3) Delta + init flag
   $isInit = ($prevTotal === null);
   $delta  = $isInit ? 0 : max(0, $total - $prevTotal);
 
-  // 4) Active si delta >= seuil ET pas init
-  $isActive = (!$isInit) && ($delta >= ACTIVE_THRESHOLD_SECONDS);
-
   // 5) daily_activity (1 ligne par user et par date)
   $activityRows[] = [
-    'user_id' => $userId,
+    'user_id'      => $userId,
     'activity_date' => $targetDate,
     'seconds_spent' => $delta,
-    ];
+  ];
 }
 
 // 3) upsert bulk (par paquets pour éviter trop gros payload)
