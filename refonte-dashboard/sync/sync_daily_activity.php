@@ -68,7 +68,7 @@ function sb_upsert(string $table, array $rows): void {
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_CUSTOMREQUEST => "POST",
     CURLOPT_POSTFIELDS => json_encode($rows),
-    CURLOPT_HTTPHEADER => sb_headers(["Prefer: resolution=merge-duplicates", "Prefer: skip-generated-columns=true"]),
+    CURLOPT_HTTPHEADER => sb_headers(["Prefer: resolution=merge-duplicates,skip-generated-columns=true"]),
     CURLOPT_TIMEOUT => 60,
   ]);
   $res = curl_exec($ch);
@@ -96,6 +96,42 @@ if (count($temps) === 0) {
 $snapshotRows = [];
 $activityRows = [];
 
+// Récupérer tous les derniers snapshots en une seule requête
+$allPrevSnapshots = sb_get(
+    '/rest/v1/daily_cumul_snapshot'
+    . '?select=user_id,total_cumul_seconds,snapshot_date'
+    . '&snapshot_date=lt.' . rawurlencode($targetDate)
+    . '&snapshot_date=gte.' . rawurlencode((new DateTime($targetDate))->modify('-32 days')->format('Y-m-d'))
+    . '&order=snapshot_date.desc'
+);
+
+// Indexer par user_id en gardant uniquement le plus récent
+$prevByUser = [];
+foreach ($allPrevSnapshots as $row) {
+    $uid = $row['user_id'];
+    if (!isset($prevByUser[$uid])) {
+        $prevByUser[$uid] = (int)$row['total_cumul_seconds'];
+    }
+}
+
+$firstDayOfMonth = (new DateTime($targetDate))->modify('first day of this month')->format('Y-m-d');
+
+$allActiveDays = sb_get(
+    '/rest/v1/daily_activity'
+    . '?select=user_id,activity_date'
+    . '&is_active=eq.true'
+    . '&activity_date=gte.' . rawurlencode($firstDayOfMonth)
+    . '&activity_date=lte.' . rawurlencode($targetDate)
+);
+
+$activeDaysByUser = [];
+foreach ($allActiveDays as $row) {
+    $uid = $row['user_id'];
+    $activeDaysByUser[$uid] = ($activeDaysByUser[$uid] ?? 0) + 1;
+}
+
+$daysInMonth = (int)(new DateTime($targetDate))->format('t');
+
 // 2) pour chaque user : total cumul + snapshot + delta
 foreach ($temps as $r) {
   $userId = $r['user_id'] ?? null;
@@ -111,27 +147,20 @@ foreach ($temps as $r) {
         + i($r['term'] ?? 0)
         + i($r['term-pc'] ?? 0);
 
+  $streakJours = $activeDaysByUser[$userId] ?? 0;
+  $streakMoisPct = $daysInMonth > 0 ? round(($streakJours / $daysInMonth) * 100) : 0;
+
   // 1) Snapshot du jour cible (J-1)
   $snapshotRows[] = [
     'user_id' => $userId,
     'snapshot_date' => $targetDate,
     'total_cumul_seconds' => $total,
+    'streak_jours' => $streakJours,
+    'streak_mois_pct' => $streakMoisPct
   ];
 
   // 2) Snapshot précédent (< targetDate)
-  $prev = sb_get(
-    '/rest/v1/daily_cumul_snapshot'
-    . '?select=total_cumul_seconds,snapshot_date'
-    . '&user_id=eq.' . rawurlencode($userId)
-    . '&snapshot_date=lt.' . rawurlencode($targetDate)
-    . '&order=snapshot_date.desc'
-    . '&limit=1'
-  );
-
-  $prevTotal = null;
-  if (is_array($prev) && count($prev) > 0) {
-    $prevTotal = (int)($prev[0]['total_cumul_seconds'] ?? 0);
-  }
+$prevTotal = $prevByUser[$userId] ?? null;
 
   // 3) Delta + init flag
   $isInit = ($prevTotal === null);
@@ -145,14 +174,8 @@ foreach ($temps as $r) {
     'user_id' => $userId,
     'activity_date' => $targetDate,
     'seconds_spent' => $delta,
-    'is_active' => $isActive
+    'is_active' => $isActive,
     ];
-
-    // Debug : log des premiers rows pour vérifier que les données sont correctes avant upsert
-  if (count($activityRows) == 1 ) {
-    file_put_contents('/tmp/debug_payload.json', json_encode($activityRows[0], JSON_PRETTY_PRINT)); 
-    error_log("[DEBUG] Payload saved to /tmp/debug_payload.json");
-  }
 }
 
 // 3) upsert bulk (par paquets pour éviter trop gros payload)
