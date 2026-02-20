@@ -85,7 +85,7 @@ function i($v): int { return is_numeric($v) ? (int)$v : 0; }
 echo "=== START sync_daily_activity (targetDate=$targetDate) ===\n";
 
 // 1) lire temps_niveau
-$temps = sb_get('/rest/v1/temps_niveau?select=user_id,"6eme","5eme","4eme","3eme","2nde","1ere",term,"term-pc"');
+$temps = sb_get('/rest/v1/temps_niveau?select=user_id,"6eme","5eme","4eme","3eme","2nde","1ere",term,"term-pc"&limit=10000');
 
 echo "[INFO] temps_niveau rows=" . count($temps) . "\n";
 if (count($temps) === 0) {
@@ -103,6 +103,7 @@ $allPrevSnapshots = sb_get(
     . '&snapshot_date=lt.' . rawurlencode($targetDate)
     . '&snapshot_date=gte.' . rawurlencode((new DateTime($targetDate))->modify('-32 days')->format('Y-m-d'))
     . '&order=snapshot_date.desc'
+    . '&limit=10000'
 );
 
 // Indexer par user_id en gardant uniquement le plus récent
@@ -121,6 +122,7 @@ $allActiveDays = sb_get(
     . '?select=user_id,activity_date'
     . '&activity_date=gte.' . rawurlencode($firstDayOfMonth)
     . '&activity_date=lte.' . rawurlencode($targetDate)
+    . '&limit=10000'
 );
 
 $activeDaysByUser = [];
