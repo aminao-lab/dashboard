@@ -1,8 +1,6 @@
-// ==========================
+// ============================================================================
 // CONFIGURATION GLOBALE
-// ==========================
-// On n'utilise plus l'ancienne API worker (BASE_URL/TOKEN)
-// On consomme nos endpoints PHP locaux (/api/...)
+// ============================================================================
 async function fetchJSON(url) {
   const res = await fetch(url);
   const json = await res.json();
@@ -15,39 +13,6 @@ function toFRDate(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
-
-// Construit des “rows” à partir de me.php
-function buildRowsFromMe(me) {
-  const userRow = { user_id: me.user_id, username: me.username };
-
-  const tempsRow = {
-    user_id: me.user_id,
-    date_maj: me.date_maj ?? null,
-    "6eme": me.temps_6eme ?? 0,
-    "5eme": me.temps_5eme ?? 0,
-    "4eme": me.temps_4eme ?? 0,
-    "3eme": me.temps_3eme ?? 0,
-    "2nde": me.temps_2nde ?? 0,
-    "1ere": me.temps_1ere ?? 0,
-    term: me.temps_term ?? 0,
-    "term-pc": me.temps_term_pc ?? 0,
-  };
-
-  const progRow = {
-    user_id: me.user_id,
-    date_maj: me.date_maj ?? null,
-    "6eme": me.prog_6eme ?? 0,
-    "5eme": me.prog_5eme ?? 0,
-    "4eme": me.prog_4eme ?? 0,
-    "3eme": me.prog_3eme ?? 0,
-    "2nde": me.prog_2nde ?? 0,
-    "1ere": me.prog_1ere ?? 0,
-    term: me.prog_term ?? 0,
-    "term-pc": me.prog_term_pc ?? 0,
-  };
-
-  return { userRow, tempsRow, progRow };
 }
 
 // Correspond aux colonnes de Temps_Niveau et Temps_Week
@@ -63,11 +28,11 @@ const LEVEL_COLUMNS = [
   "term-pc",
 ];
 
-let CURRENT_USER_ID = null; // Nouvelle ligne : user_id sera déterminé via /api/me.php (session)
+let CURRENT_USER_ID = null;
 
-// ==========================
-// VARIABLES
-// ==========================
+// ============================================================================
+// VARIABLES GLOBALES
+// ============================================================================
 let usersData = [];
 let tempsNiveauData = [];
 let tempsWeekData = [];
@@ -82,43 +47,27 @@ let currentBarsStartIndex = 0;
 // Tableau global des semaines complètes pour l'histogramme
 let allCompleteWeeks = [];
 
-// ==========================
-// FETCH DATA VIA WORKER
-// ==========================
-async function fetchEndpoint(endpoint) {
-  const url = `${CONFIG.BASE_URL}/?endpoint=${endpoint}&token=${CONFIG.TOKEN}`;
-  const res = await fetch(url);
-  const json = await res.json();
-
-  if (!json.success) {
-    throw new Error(`Erreur API: ${json.error}`);
-  }
-
-  return json.data;
-}
-
-// ==================================================
+// ============================================================================
 // LOAD DATA (via /api/me.php + /api/temps_week.php)
-// ==================================================
+// ============================================================================
 async function loadData() {
   try {
     // Afficher le loader
     loaderEl.style.display = "flex";
     dashboardEl.style.display = "none";
 
-    // Nouvelle ligne : récupérer l'utilisateur via la session serveur
+    // Récupérer l'utilisateur via la session serveur
     const meRes = await fetch("/api/me.php");
     const meJson = await meRes.json();
 
     if (!meJson.ok) {
-      // Nouvelle ligne : message clair si session absente/expirée
       throw new Error(meJson.error || "Session expirée. Recharge le lien signé.");
     }
 
     const me = meJson.me;
-    CURRENT_USER_ID = me.user_id; // Nouvelle ligne : ID déterminé depuis la session
+    CURRENT_USER_ID = me.user_id;
 
-    // Nouvelle ligne : construire les structures attendues par le dashboard
+    // Construire les structures attendues par le dashboard
     const userRow = { user_id: me.user_id, username: me.username };
     const tempsRow = {
       user_id: me.user_id,
@@ -149,20 +98,23 @@ async function loadData() {
     tempsNiveauData = [tempsRow];
     progressionData = [progRow];
 
-    // Nouvelle ligne : récupérer temps_week via session
+    // Récupérer temps_week via session
     const weekRes = await fetch("/api/temps_week.php");
     const weekJson = await weekRes.json();
     if (!weekJson.ok) {
       throw new Error(weekJson.error || "Erreur /api/temps_week.php");
     }
 
-    // (si tu as toFRDate dans ton fichier, garde-le ; sinon tu peux enlever cette map)
     tempsWeekData = (weekJson.rows || []).map((r) => ({
       ...r,
-      // si r.debute_le est déjà "dd/mm/yyyy", ça ne casse pas
       debute_le: r.debute_le,
       finit_le: r.finit_le,
     }));
+
+    console.log("✅ Données chargées:", {
+      user: CURRENT_USER_ID,
+      weeks: tempsWeekData.length
+    });
 
     // Init + UI
     initUser();
@@ -178,15 +130,13 @@ async function loadData() {
   } catch (error) {
     console.error("❌ Erreur chargement données:", error);
     loaderEl.style.display = "none";
-
-    // Nouvelle ligne : message mis à jour (plus de mention user_id dans l'URL)
     alert("Impossible de charger les données. Vérifie que ta session est active (lien signé) et que les endpoints /api/me.php et /api/temps_week.php répondent.");
   }
 }
 
-// ==========================
-// Régularité 
-// ==========================
+// ============================================================================
+// RÉGULARITÉ
+// ============================================================================
 async function loadRegularity() {
   try {
     console.log("loadRegularity() called");
@@ -199,15 +149,11 @@ async function loadRegularity() {
     if (!json.ok) return;
 
     const activeDays = Number(json.active_days ?? 0);
-    const tier = json.tier; // "bronze" | "silver" | "gold" | "platinum" | "diamond" | null
-    const nextTier = json.next_tier; // idem ou null
+    const tier = json.tier;
+    const nextTier = json.next_tier;
     const daysToNext = Number(json.days_to_next ?? 0);
 
-    // =========================
-    // 1) Résumé sous le titre
-    // =========================
-
-    // Période lisible "ce mois-ci"
+    // Période lisible
     const periodEl = document.getElementById("regularity-period");
     if (periodEl && json.month) {
       const [y, m] = String(json.month).split("-");
@@ -218,34 +164,26 @@ async function loadRegularity() {
       periodEl.textContent = `Ce mois-ci (${monthName})`;
     }
 
-    // KPI "X connexions ce mois ci"
+    // KPI
     const daysEl = document.getElementById("regularity-days");
     if (daysEl) {
       daysEl.textContent = `${activeDays} connexion${activeDays > 1 ? "s" : ""} ce mois-ci`;
     }
 
-    // =========================
-    // 2) Barre de progression
-    // =========================
+    // Barre de progression
     const maxDays = 25;
     const percent = Math.min(activeDays / maxDays, 1) * 100;
 
     const fill = document.getElementById("regularity-fill");
     if (fill) fill.style.width = percent + "%";
 
-    // =========================
-    // 3) Stations (états visuels)
-    // =========================
+    // Stations
     const tiersOrder = ["bronze", "silver", "gold", "platinum", "diamond"];
-    
     const TIER_LIMITS = { bronze: 3, silver: 6, gold: 12, platinum: 19, diamond: 25 };
     const TIER_LABELS = { bronze: "Bronze", silver: "Argent", gold: "Or", platinum: "Platine", diamond: "Diamant" };
     
-    // Important : on cible UNIQUEMENT les stations du bloc régularité
     const stationsRoot = document.getElementById("regularity-stations");
-    const stations = stationsRoot
-      ? stationsRoot.querySelectorAll(".station")
-      : document.querySelectorAll("#regularity .station");
+    const stations = stationsRoot ? stationsRoot.querySelectorAll(".station") : [];
 
     stations.forEach((el) => {
       const t = el.dataset.tier;
@@ -270,6 +208,7 @@ async function loadRegularity() {
       }
     });
 
+    // Tooltips stations
     stations.forEach((el) => {
       const t = el.dataset.tier;
       const tooltip = el.querySelector(".regularity-tooltip");
@@ -286,61 +225,37 @@ async function loadRegularity() {
         text = `Badge ${label}. Ton niveau actuel 🌟`;
       } else {
         const remaining = Math.max(0, limit - activeDays);
-        text = `Badge ${label}. Plus que ${remaining} connexion${remaining > 1 ? "s" : ""} pour l’atteindre 💪`;
+        text = `Badge ${label}. Plus que ${remaining} connexion${remaining > 1 ? "s" : ""} pour l'atteindre 💪`;
       }
 
       tooltip.textContent = text;
     });
 
-    // =========================
-    // 4) Message motivant
-    // =========================
+    // Message motivant
     const msgEl = document.getElementById("regularity-message");
     if (msgEl) {
       msgEl.style.display = "block";
 
       if (!tier) {
-        msgEl.textContent =
-          "Plus tu te connectes régulièrement, plus tu montes en niveau et débloques de nouveaux badges !";
+        msgEl.textContent = "Plus tu te connectes régulièrement, plus tu montes en niveau et débloques de nouveaux badges !";
       } else if (!nextTier) {
-        msgEl.textContent =
-          "💎 Niveau Diamant atteint ! Ta régularité est exceptionnelle, bravo !";
+        msgEl.textContent = "💎 Niveau Diamant atteint ! Ta régularité est exceptionnelle, bravo !";
       } else {
-        msgEl.textContent =
-          `Encore ${daysToNext} jour${daysToNext > 1 ? "s" : ""} pour atteindre le niveau ${String(nextTier).toUpperCase()} 💪`;
+        msgEl.textContent = `Encore ${daysToNext} jour${daysToNext > 1 ? "s" : ""} pour atteindre le niveau ${String(nextTier).toUpperCase()} 💪`;
       }
     }
 
-    // =========================
-    // 5) Tooltip au survol des stations
-    // =========================
-    const thresholds = {
-      bronze: 3,
-      silver: 6,
-      gold: 12,
-      platinum: 19,
-      diamond: 25,
-    };
-
+    // Tooltip global au survol
+    const thresholds = { bronze: 3, silver: 6, gold: 12, platinum: 19, diamond: 25 };
     const tooltip = document.getElementById("regularity-tooltip");
-    const stationsRoot2 = document.getElementById("regularity-stations");
-    const stationEls = stationsRoot2
-      ? stationsRoot2.querySelectorAll(".station")
-      : [];
 
     function tierLabel(t) {
-      const map = {
-        bronze: "Bronze",
-        silver: "Argent",
-        gold: "Or",
-        platinum: "Platine",
-        diamond: "Diamant",
-      };
+      const map = { bronze: "Bronze", silver: "Argent", gold: "Or", platinum: "Platine", diamond: "Diamant" };
       return map[t] || t;
     }
 
-    if (tooltip && stationEls.length) {
-      stationEls.forEach((el) => {
+    if (tooltip && stations.length) {
+      stations.forEach((el) => {
         const t = el.dataset.tier;
         const needed = thresholds[t];
 
@@ -348,15 +263,8 @@ async function loadRegularity() {
           if (!needed) return;
 
           const remaining = Math.max(0, needed - activeDays);
-
           let line1 = `${tierLabel(t)} — ${needed} jour${needed > 1 ? "s" : ""}`;
-          let line2 = "";
-
-          if (activeDays >= needed) {
-            line2 = "✅ Palier atteint";
-          } else {
-            line2 = `Encore ${remaining} jour${remaining > 1 ? "s" : ""} pour l’atteindre 💪`;
-          }
+          let line2 = activeDays >= needed ? "✅ Palier atteint" : `Encore ${remaining} jour${remaining > 1 ? "s" : ""} pour l'atteindre 💪`;
 
           tooltip.innerHTML = `<strong>${line1}</strong><br>${line2}`;
           tooltip.style.display = "block";
@@ -375,9 +283,9 @@ async function loadRegularity() {
   }
 }
 
-// ==========================
+// ============================================================================
 // UTILS TEMPS → format humain
-// ==========================
+// ============================================================================
 function formatSeconds(seconds) {
   seconds = Number(seconds);
 
@@ -400,9 +308,9 @@ function formatSeconds(seconds) {
   return `${hours}H${remainingMinutes.toString().padStart(2, "0")}`;
 }
 
-// ==========================
+// ============================================================================
 // UTILS DATE → format humain
-// ==========================
+// ============================================================================
 function getWeekDateRange(isoWeekStr) {
   try {
     const [year, week] = isoWeekStr.split("-W").map(Number);
@@ -436,9 +344,9 @@ function getWeekDateRange(isoWeekStr) {
   }
 }
 
-// ==========================
+// ============================================================================
 // DOM REFERENCES
-// ==========================
+// ============================================================================
 const usernameEl = document.getElementById("username");
 const lastUpdatedEl = document.getElementById("last-updated");
 const selectLevel = document.getElementById("niveau");
@@ -457,42 +365,38 @@ const dashboardEl = document.getElementById("dashboard");
 const selectLevelMessageEl = document.getElementById("select-level-message");
 const dashboardContentEl = document.getElementById("dashboard-content");
 
-// ==========================
+// ============================================================================
 // INIT USER
-// ==========================
+// ============================================================================
 function initUser() {
   const niveauRow = tempsNiveauData.find((r) => r.user_id === CURRENT_USER_ID);
   const user = usersData.find((u) => u.user_id === CURRENT_USER_ID);
 
   usernameEl.textContent = user?.username ?? "Utilisateur";
   lastUpdatedEl.textContent = niveauRow?.date_maj ?? "-";
-
 }
 
-// ==========================
+// ============================================================================
 // SELECT LEVEL
-// ==========================
+// ============================================================================
 function initSelect() {
-  // Vider le select pour éviter les doublons
   selectLevel.innerHTML = "";
 
   LEVEL_COLUMNS.forEach((level) => {
     const option = document.createElement("option");
     option.value = level;
-    option.textContent =
-      level === "-" ? "Sélectionnez un niveau" : level.toUpperCase();
+    option.textContent = level === "-" ? "Sélectionnez un niveau" : level.toUpperCase();
     selectLevel.appendChild(option);
   });
 
-  // Event listener pour le changement de niveau
   selectLevel.addEventListener("change", handleLevelChange);
 
   console.log("✅ Select initialisé avec", LEVEL_COLUMNS.length, "options");
 }
 
-// ==========================
+// ============================================================================
 // HANDLER CHANGEMENT DE NIVEAU
-// ==========================
+// ============================================================================
 function handleLevelChange(event) {
   const newLevel = event.target.value;
   console.log("🔄 Changement de niveau:", selectedLevel, "→", newLevel);
@@ -500,11 +404,9 @@ function handleLevelChange(event) {
   selectedLevel = newLevel;
 
   try {
-    // Réinitialiser les index
     currentWeekIndex = 0;
     currentBarsStartIndex = 0;
 
-    // Reconstruire et mettre à jour
     buildAllCompleteWeeks();
     updateUI();
 
@@ -515,9 +417,9 @@ function handleLevelChange(event) {
   }
 }
 
-// ==========================
+// ============================================================================
 // INIT INDEXES POUR NAVIGATION
-// ==========================
+// ============================================================================
 function initIndexes() {
   const rows = tempsWeekData.filter((r) => r.user_id === CURRENT_USER_ID);
 
@@ -532,9 +434,9 @@ function initIndexes() {
   currentBarsStartIndex = Math.max(0, allCompleteWeeks.length - 4);
 }
 
-// ==========================
+// ============================================================================
 // CONSTRUIRE TOUTES LES SEMAINES COMPLÈTES
-// ==========================
+// ============================================================================
 function buildAllCompleteWeeks() {
   allCompleteWeeks = [];
 
@@ -549,13 +451,8 @@ function buildAllCompleteWeeks() {
       .filter((r) => r.semaine && r.semaine.includes("-W"))
       .map((r) => ({ ...r }))
       .sort((a, b) => {
-        const dateA = a.debute_le
-          ? new Date(a.debute_le.split("/").reverse().join("-"))
-          : new Date(0);
-        const dateB = b.debute_le
-          ? new Date(b.debute_le.split("/").reverse().join("-"))
-          : new Date(0);
-        return dateA - dateB;
+        // ✅ Trier par semaine ISO (format YYYY-Wxx)
+        return a.semaine.localeCompare(b.semaine);
       });
 
     if (rows.length === 0) {
@@ -563,163 +460,33 @@ function buildAllCompleteWeeks() {
       return;
     }
 
-    const first = rows[0];
+    console.log(`📊 Semaines disponibles: ${rows.length}`);
+    console.log(`📅 Première: ${rows[0].semaine}, Dernière: ${rows[rows.length - 1].semaine}`);
 
-    // ✅ Calculer la semaine actuelle - 1 (dernière semaine complète)
-    const today = new Date();
-    const currentWeekInfo = getCurrentISOWeek(today);
+    // ✅ On prend TOUTES les semaines disponibles sans essayer de combler les trous
+    allCompleteWeeks = rows;
 
-    // Soustraire 1 semaine
-    const lastCompleteWeekInfo = getPreviousWeek(
-      currentWeekInfo.year,
-      currentWeekInfo.week,
-    );
-    const endYear = lastCompleteWeekInfo.year;
-    const endWeek = lastCompleteWeekInfo.week;
-
-    console.log(`📅 PREMIÈRE SEMAINE (Google Sheets): ${first.semaine}`);
-    console.log(
-      `📅 SEMAINE ACTUELLE: ${currentWeekInfo.year}-W${currentWeekInfo.week
-        .toString()
-        .padStart(2, "0")}`,
-    );
-    console.log(
-      `📅 DERNIÈRE SEMAINE COMPLÈTE (affichée): ${endYear}-W${endWeek
-        .toString()
-        .padStart(2, "0")}`,
-    );
-
-    if (!first.semaine) {
-      console.error("❌ Format de semaine invalide");
-      return;
-    }
-
-    let startYear = parseInt(first.semaine.split("-W")[0]);
-    let startWeek = parseInt(first.semaine.split("-W")[1]);
-
-    console.log(`\n🔢 START: Année ${startYear}, Semaine ${startWeek}`);
-    console.log(
-      `🔢 END: Année ${endYear}, Semaine ${endWeek} (dernière semaine complète)`,
-    );
-
-    function nextWeek(year, week) {
-      week++;
-      if (week > 52) {
-        year++;
-        week = 1;
-      }
-      return { year, week };
-    }
-
-    let y = startYear;
-    let w = startWeek;
-    let iterations = 0;
-    const MAX_ITERATIONS = 520;
-
-    console.log("\n🔄 DÉBUT DE LA BOUCLE:");
-
-    while (iterations < MAX_ITERATIONS) {
-      iterations++;
-
-      const weekStr = `${y}-W${w.toString().padStart(2, "0")}`;
-      let row = rows.find((r) => r.semaine === weekStr);
-
-      if (!row) {
-        // ✅ Semaine manquante : créer avec temps = 0
-        row = {
-          user_id: CURRENT_USER_ID,
-          semaine: weekStr,
-        };
-        row[selectedLevel] = 0;
-
-        const range = getWeekDateRange(weekStr);
-        row.debute_le = range.start;
-        row.finit_le = range.end;
-
-        console.log(
-          `⚠️ Semaine MANQUANTE: ${weekStr} | ${row.debute_le} → ${row.finit_le} | Temps: 0`,
-        );
-      } else {
-        console.log(
-          `✅ Semaine EXISTANTE: ${weekStr} | ${row.debute_le} → ${row.finit_le} | Temps: ${row[selectedLevel]}`,
-        );
-      }
-
-      allCompleteWeeks.push(row);
-
-      // ✅ Arrêter APRÈS avoir traité la dernière semaine complète
-      if (y === endYear && w === endWeek) {
-        console.log(`🛑 Dernière semaine complète atteinte : ${weekStr}`);
-        break;
-      }
-
-      ({ year: y, week: w } = nextWeek(y, w));
-    }
-
-    if (iterations >= MAX_ITERATIONS) {
-      console.error("⚠️ Boucle infinie détectée, arrêt forcé");
-    }
-
-    console.log("\n✅ Semaines construites:", allCompleteWeeks.length);
-    console.log("\n📊 DERNIÈRES SEMAINES CONSTRUITES:");
-    allCompleteWeeks.slice(-5).forEach((r) => {
-      console.log(
-        `  ${r.semaine} | ${r.debute_le} → ${r.finit_le} | Temps: ${r[selectedLevel]}`,
-      );
-    });
-
-    // Réinitialiser l'index de la semaine courante
     currentWeekIndex = Math.max(0, allCompleteWeeks.length - 1);
     currentBarsStartIndex = Math.max(0, allCompleteWeeks.length - 4);
+
+    console.log("✅ Semaines construites:", allCompleteWeeks.length);
   } catch (error) {
     console.error("❌ Erreur buildAllCompleteWeeks:", error);
-    console.error("Stack:", error.stack);
     allCompleteWeeks = [];
   }
 }
 
-// ==========================
-// FONCTION UTILITAIRE : Obtenir la semaine ISO actuelle
-// ==========================
-function getCurrentISOWeek(date) {
-  const d = new Date(date);
-
-  // ISO 8601 : La semaine commence le lundi
-  const dayOfWeek = (d.getDay() + 6) % 7;
-
-  // Trouver le jeudi de la semaine actuelle
-  d.setDate(d.getDate() - dayOfWeek + 3);
-
-  // Janvier 4 est toujours dans la semaine 1
-  const jan4 = new Date(d.getFullYear(), 0, 4);
-
-  // Calculer le nombre de semaines
-  const weekNumber = Math.ceil(((d - jan4) / 86400000 + jan4.getDay() + 1) / 7);
-
-  return {
-    year: d.getFullYear(),
-    week: weekNumber,
-  };
-}
-
-// ==========================
-// FONCTION UTILITAIRE : Obtenir la semaine précédente
-// ==========================
-function getPreviousWeek(year, week) {
-  week--;
-  if (week < 1) {
-    year--;
-    week = 52;
-  }
-  return { year, week };
-}
-
-// ==========================
+// ============================================================================
 // SETUP NAVIGATION HISTOGRAMME
-// ==========================
+// ============================================================================
 function setupBarsNavigation() {
   const prevArrow = document.getElementById("bar-prev");
   const nextArrow = document.getElementById("bar-next");
+
+  if (!prevArrow || !nextArrow) {
+    console.warn("⚠️ Boutons de navigation bars introuvables");
+    return;
+  }
 
   prevArrow.addEventListener("click", () => {
     if (currentBarsStartIndex > 0) {
@@ -737,20 +504,18 @@ function setupBarsNavigation() {
   });
 }
 
-// ==========================
+// ============================================================================
 // UI UPDATE GLOBAL
-// ==========================
+// ============================================================================
 function updateUI() {
   console.log("🔄 Mise à jour UI pour le niveau:", selectedLevel);
 
-  // Aucun niveau sélectionné
   if (selectedLevel === "-") {
     selectLevelMessageEl.style.display = "block";
     dashboardContentEl.style.display = "none";
     return;
   }
 
-  // Niveau sélectionné
   selectLevelMessageEl.style.display = "none";
   dashboardContentEl.style.display = "block";
 
@@ -765,9 +530,9 @@ function updateUI() {
   }
 }
 
-// ==========================
+// ============================================================================
 // GLOBAL TEMPS TOTAL + PROGRESSION
-// ==========================
+// ============================================================================
 function updateGlobalData() {
   if (selectedLevel === "-") {
     globalHoursEl.textContent = "0";
@@ -777,7 +542,6 @@ function updateGlobalData() {
   }
 
   try {
-    // TEMPS TOTAL
     const row = tempsNiveauData.find((r) => r.user_id === CURRENT_USER_ID);
 
     if (!row) {
@@ -789,10 +553,7 @@ function updateGlobalData() {
       globalHoursEl.textContent = formatSeconds(timeValue || 0);
     }
 
-    // SCORE DE PROGRESSION
-    const progressRow = progressionData.find(
-      (r) => r.user_id === CURRENT_USER_ID,
-    );
+    const progressRow = progressionData.find((r) => r.user_id === CURRENT_USER_ID);
 
     if (!progressRow) {
       globalScoreEl.textContent = "0";
@@ -821,9 +582,9 @@ function updateGlobalData() {
   }
 }
 
-// ==========================
+// ============================================================================
 // SEMAINE CARD
-// ==========================
+// ============================================================================
 function updateWeekCard() {
   if (selectedLevel === "-") {
     weekHoursEl.textContent = "0 Heure";
@@ -850,9 +611,8 @@ function updateWeekCard() {
     const row = allCompleteWeeks[currentWeekIndex] || {};
 
     weekHoursEl.textContent = formatSeconds(row[selectedLevel] || 0);
-    weekRangeEl.textContent = `Du ${row.debute_le ?? '-'} au ${row.finit_le ?? '-'}`;
+    weekRangeEl.textContent = `Du ${row.debute_le ?? "-"} au ${row.finit_le ?? "-"}`;
 
-    // Flèches : visibles uniquement si navigation possible (pas lié au temps)
     if (totalWeeks <= 1) {
       weekPrevBtn.style.visibility = "hidden";
       weekNextBtn.style.visibility = "hidden";
@@ -860,6 +620,13 @@ function updateWeekCard() {
       weekPrevBtn.style.visibility = currentWeekIndex > 0 ? "visible" : "hidden";
       weekNextBtn.style.visibility = currentWeekIndex < totalWeeks - 1 ? "visible" : "hidden";
     }
+
+    weekPrevBtn.onclick = () => {
+      if (currentWeekIndex > 0) {
+        currentWeekIndex--;
+        updateWeekCard();
+      }
+    };
 
     weekNextBtn.onclick = () => {
       if (currentWeekIndex < totalWeeks - 1) {
@@ -872,9 +639,9 @@ function updateWeekCard() {
   }
 }
 
-// ==========================
+// ============================================================================
 // HISTOGRAMME AVEC NAVIGATION
-// ==========================
+// ============================================================================
 function updateBars() {
   barsContainer.innerHTML = "";
 
@@ -884,8 +651,8 @@ function updateBars() {
   if (selectedLevel === "-" || allCompleteWeeks.length === 0) {
     chartStartEl.textContent = "—";
     chartEndEl.textContent = "—";
-    prevArrow.style.visibility = "hidden";
-    nextArrow.style.visibility = "hidden";
+    if (prevArrow) prevArrow.style.visibility = "hidden";
+    if (nextArrow) nextArrow.style.visibility = "hidden";
     return;
   }
 
@@ -902,14 +669,12 @@ function updateBars() {
     );
 
     // Gestion des flèches
-    if (totalWeeks > 4) {
-      prevArrow.style.visibility =
-        currentBarsStartIndex > 0 ? "visible" : "hidden";
-      nextArrow.style.visibility =
-        currentBarsStartIndex < maxIndex ? "visible" : "hidden";
+    if (totalWeeks > 4 && prevArrow && nextArrow) {
+      prevArrow.style.visibility = currentBarsStartIndex > 0 ? "visible" : "hidden";
+      nextArrow.style.visibility = currentBarsStartIndex < maxIndex ? "visible" : "hidden";
     } else {
-      prevArrow.style.visibility = "hidden";
-      nextArrow.style.visibility = "hidden";
+      if (prevArrow) prevArrow.style.visibility = "hidden";
+      if (nextArrow) nextArrow.style.visibility = "hidden";
     }
 
     // Affichage des dates
@@ -919,10 +684,7 @@ function updateBars() {
     }
 
     // Génération des barres
-    const maxVal = Math.max(
-      ...windowWeeks.map((r) => Number(r[selectedLevel] || 0)),
-      1,
-    );
+    const maxVal = Math.max(...windowWeeks.map((r) => Number(r[selectedLevel] || 0)), 1);
     const containerHeight = barsContainer.clientHeight || 190;
     const maxBarHeight = containerHeight * 0.65;
     const minBarHeight = 6;
@@ -953,11 +715,9 @@ function updateBars() {
   }
 }
 
-// ==========================
-// START
-// ==========================
-
-// Remplir les listes "Récapitulatif par niveau"
+// ============================================================================
+// RÉCAPITULATIF PAR NIVEAU
+// ============================================================================
 function updateRecapLists() {
   const progUl = document.getElementById("progression-list");
   const tempsUl = document.getElementById("temps-list");
@@ -966,19 +726,19 @@ function updateRecapLists() {
   const tempsRow = tempsNiveauData.find((r) => r.user_id === CURRENT_USER_ID);
 
   if (progUl && progressRow) {
-    progUl.innerHTML = LEVEL_COLUMNS
-      .filter(l => l !== "-")
-      .map(lvl => `<li>${lvl.toUpperCase()} : ${Math.round(Number(progressRow[lvl] || 0))}%</li>`)
+    progUl.innerHTML = LEVEL_COLUMNS.filter((l) => l !== "-")
+      .map((lvl) => `<li>${lvl.toUpperCase()} : ${Math.round(Number(progressRow[lvl] || 0))}%</li>`)
       .join("");
   }
 
   if (tempsUl && tempsRow) {
-    tempsUl.innerHTML = LEVEL_COLUMNS
-      .filter(l => l !== "-")
-      .map(lvl => `<li>${lvl.toUpperCase()} : ${formatSeconds(Number(tempsRow[lvl] || 0))}</li>`)
+    tempsUl.innerHTML = LEVEL_COLUMNS.filter((l) => l !== "-")
+      .map((lvl) => `<li>${lvl.toUpperCase()} : ${formatSeconds(Number(tempsRow[lvl] || 0))}</li>`)
       .join("");
   }
 }
 
+// ============================================================================
+// START
+// ============================================================================
 loadData();
-loadRegularity();

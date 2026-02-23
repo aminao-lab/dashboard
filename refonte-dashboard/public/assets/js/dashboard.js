@@ -88,25 +88,27 @@ async function loadDashboard() {
     dashboardData.tempsNiveau = tempsNiveau || {};
 
     // 4. Récupérer les temps hebdomadaires (toutes les semaines)
-    const { data: tempsWeek } = await supabase
-      .from("temps_week")
-      .select("*")
-      .eq("user_id", currentUserId)
-      .order("semaine", { ascending: false });
+    const weekRes = await fetch("/api/temps_week.php");
+    const weekJson = await weekRes.json();
 
-    dashboardData.tempsWeek = tempsWeek || [];
-
-    // ✅ FILTRER : Exclure la PREMIÈRE semaine (la plus ancienne)
-    if (dashboardData.tempsWeek.length > 1) {
-      // La liste est triée desc (plus récente d'abord)
-      // Donc on enlève la DERNIÈRE (qui est la plus ancienne)
-      filteredWeeks = dashboardData.tempsWeek.slice(0, -1);
-    } else {
-      // Si une seule semaine ou aucune, on garde tel quel
-      filteredWeeks = dashboardData.tempsWeek;
+    if (!weekJson.ok) {
+      throw new Error(weekJson.error || "Erreur lors de la récupération des temps hebdomadaires /api/temps_week.php");
     }
 
-    console.log("Semaines totales:", dashboardData.tempsWeek.length);
+    tempsWeekData = weekJson.rows || [];
+
+
+    // ✅ FILTRER : Exclure la PREMIÈRE semaine (la plus ancienne)
+    if (tempsWeekData.length > 1) {
+      // La liste est triée desc (plus récente d'abord)
+      // Donc on enlève la DERNIÈRE (qui est la plus ancienne)
+      filteredWeeks = tempsWeekData.slice(0, -1);
+    } else {
+      // Si une seule semaine ou aucune, on garde tel quel
+      filteredWeeks = tempsWeekData;
+    }
+
+    console.log("Semaines totales:", tempsWeekData.length);
     console.log("Semaines filtrées (sans la 1ère):", filteredWeeks.length);
 
     // Afficher
