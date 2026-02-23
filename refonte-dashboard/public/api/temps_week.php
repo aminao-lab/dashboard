@@ -56,7 +56,7 @@ $today = new DateTime('today', new DateTimeZone('Europe/Paris'));
 $start = (clone $today)->modify('-6 days')->format('Y-m-d');
 $end   = $today->format('Y-m-d');
 
-$history = sb_get('/rest/v1/daily_activity', [
+$history = sb_get('/rest/v1/temps_week', [
     'select' => 'activity_date,seconds_spent,is_active',
     'user_id' => 'eq.' . $userId,
     'activity_date' => 'gte.' . $start,
