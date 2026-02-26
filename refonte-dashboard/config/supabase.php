@@ -9,8 +9,8 @@ class SupabaseClient
 
     public function __construct()
     {
-        $this->url = SUPABASE_URL . '/rest/v1';
-        $this->key = SUPABASE_SERVICE_KEY;
+        $this->url = getenv('SUPABASE_URL') . '/rest/v1';
+        $this->key = getenv('SUPABASE_SERVICE_KEY');
         $this->headers = [
             'apikey: ' . $this->key,
             'Authorization: Bearer ' . $this->key,

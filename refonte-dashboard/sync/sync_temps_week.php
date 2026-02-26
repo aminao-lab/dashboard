@@ -33,7 +33,7 @@ if (!$students || count($students) === 0) {
 $totalStudents = count($students);
 logMessage("📊 Total élèves : {$totalStudents}");
 
-// 📊 ÉTAPE 2 : Récupérer TOUTES les semaines existantes pour cette semaine (1 seule requête!)
+// 📊 ÉTAPE 2 : Récupérer TOUTES les semaines existantes pour cette semaine 
 logMessage("🔍 Récupération des données existantes semaine {$isoWeek}...");
 $existingWeeks = $supabase->select('temps_week', 'user_id', [
     'semaine' => "eq.{$isoWeek}"
@@ -47,7 +47,7 @@ if ($existingWeeks && count($existingWeeks) > 0) {
 }
 logMessage("✅ " . count($existingUserIds) . " élèves déjà présents pour cette semaine");
 
-// 📊 ÉTAPE 3 : Récupérer TOUTES les semaines précédentes (1 seule requête!)
+// 📊 ÉTAPE 3 : Récupérer TOUTES les semaines précédentes 
 logMessage("🔍 Récupération de toutes les dernières semaines...");
 $allPreviousWeeks = $supabase->select('temps_week', 'user_id,cumul_6eme,cumul_5eme,cumul_4eme,cumul_3eme,cumul_2nde,cumul_1ere,cumul_term,cumul_term-pc', [
     'semaine' => "lt.{$isoWeek}"

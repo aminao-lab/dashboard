@@ -118,39 +118,6 @@ logMessage("=== FIN SYNC STUDENTS JOB {$jobIndex} ===\n");
 // ========================================
 // 🛠️ FONCTION HELPER : Récupérer tous les enrolled users
 // ========================================
-function getEnrolledUserIds($lw) {
-    $enrolledIds = [];
-    $page = 1;
-    
-    // 📚 L'API LearnWorlds a probablement un endpoint /enrollments
-    // Adapter selon ta méthode réelle
-    while (true) {
-        try {
-            // Option 1 : Si tu as un endpoint enrollments
-            $enrollments = $lw->getEnrollments($page, 100);
-            
-            if (empty($enrollments['data'])) {
-                break;
-            }
-            
-            foreach ($enrollments['data'] as $enrollment) {
-                $enrolledIds[] = $enrollment['user_id'];
-            }
-            
-            $page++;
-            
-            if ($page > ($enrollments['meta']['totalPages'] ?? 1)) {
-                break;
-            }
-            
-            usleep(200000);
-            
-        } catch (Exception $e) {
-            logMessage("⚠️ Erreur récupération enrollments page {$page}: " . $e->getMessage(), 'WARNING');
-            break;
-        }
-    }
-    
-    // 🎯 Retourner un array unique
-    return array_unique($enrolledIds);
+function getEnrolledUserIds(LearnWorlds $lw) {
+    return $lw->getAllEnrolledUserIds();
 }

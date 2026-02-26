@@ -3,6 +3,7 @@ require_once __DIR__ . '/../config/supabase.php';
 require_once __DIR__ . '/../includes/learnworlds.class.php';
 require_once __DIR__ . '/../includes/functions.php';
 
+
 // 🎯 Paramètres de parallélisation
 $jobIndex = (int)($_ENV['JOB_INDEX'] ?? 0);
 $totalJobs = (int)($_ENV['TOTAL_JOBS'] ?? 1);

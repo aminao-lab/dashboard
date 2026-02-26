@@ -185,11 +185,13 @@ foreach ($temps as $r) {
   $delta  = $isInit ? 0 : max(0, $total - $prevTotal);
 
   // 5) daily_activity (1 ligne par user et par date)
-  $activityRows[] = [
-    'user_id'      => $userId,
-    'activity_date' => $targetDate,
-    'seconds_spent' => $delta,
-  ];
+  if ($delta >= ACTIVE_THRESHOLD_SECONDS) {
+      $activityRows[] = [
+        'user_id'      => $userId,
+        'activity_date' => $targetDate,
+        'seconds_spent' => $delta,
+    ];
+  }
 }
 
 // 3) upsert bulk (par paquets pour éviter trop gros payload)

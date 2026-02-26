@@ -5,17 +5,14 @@ if (file_exists(__DIR__ . '/../includes/database.php')) {
     require_once __DIR__ . '/../includes/database.php';
 }
 
-// Configuration LearnWorlds API
-define('LW_BASE_URL', 'https://academy.dphialpha.fr/admin/api/v2');
-define('LW_API_TOKEN', 'uaunURMeO95mIMSHsI86XnTMVpCgkH6SrSOm4qyE'); // ⚠️ À PROTÉGER
-define('LW_CLIENT_ID', '6291473cedd165759a0dd042');
+$LW_API_TOKEN = getenv('LW_API_TOKEN');
+$LW_BASE_URL = getenv('LW_BASE_URL');
+$LW_CLIENT_ID = getenv('LW_CLIENT_ID');
 
-// Configuration Supabase
-define('SUPABASE_URL', 'https://bfjdgdetpozrdiqxopfh.supabase.co');
-define('SUPABASE_SERVICE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmamRnZGV0cG96cmRpcXhvcGZoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODI4MzMyOSwiZXhwIjoyMDgzODU5MzI5fQ.-ZEWOvHcvEBmq2zu3jzmav01sr1gVmB3opDyFU4nLao');
+$SUPABASE_URL = getenv('SUPABASE_URL');
+$SUPABASE_SERVICE_KEY = getenv('SUPABASE_SERVICE_KEY');
 
-// Secret serveur 
-define('APP_SESSION_SECRET', 'b9fJsjNZcQz67v8f93Ktu383ICSio8G0Re4er'); // ⚠️ À PROTÉGER
+$APP_SESSION_SECRET = getenv('APP_SESSION_SECRET');
 
 // Configuration des niveaux
 define('NIVEAUX', ['6eme', '5eme', '4eme', '3eme', '2nde', '1ere', 'term', 'term-pc']);

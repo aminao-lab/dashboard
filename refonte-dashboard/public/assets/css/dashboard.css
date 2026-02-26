@@ -572,6 +572,63 @@ h2 {
   opacity: 1;
 }
 
+/*Recapitulatif par niveau*/
 
+.card.full-width {
+  padding: 22px; 
+  margin-top: 20px; 
+  background: var(--panel);
+  border-radius: var(--radius); 
+  box-shadow: var(--shadow);
+}
 
+.rows { 
+    display: flex; 
+    gap: 32px; 
+    flex-wrap: wrap; 
+    margin-top: 12px; 
+}
+
+.rows > div { 
+    flex: 1; 
+    min-width: 280px; 
+}
+
+.rows .muted { 
+  font-size: 14px; 
+  font-weight: 700; 
+  margin-bottom: 12px; 
+  letter-spacing: 0.02em; 
+}
+
+.rows ul { 
+    margin: 0; 
+    padding-left: 0; 
+    list-style: none; 
+}
+
+.rows li { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: baseline;
+  padding: 9px 0; 
+  border-bottom: 1px solid #e9e1da; 
+  font-size: 14px;
+}
+
+.rows li:last-child { 
+    border-bottom: none; 
+}
+
+.rows li .level-label { 
+  font-weight: 700; 
+  font-size: 15px; 
+  min-width: 45px; 
+}
+
+.rows li .level-value { 
+    font-weight: 500; 
+    color: var(--muted); 
+    flex: 1; 
+    text-align: right; }
 
