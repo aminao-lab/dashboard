@@ -1,33 +1,56 @@
 <?php
 
-// Include database functions
-if (file_exists(__DIR__ . '/../includes/database.php')) {
-    require_once __DIR__ . '/../includes/database.php';
+// Chargement des variables d'environnement depuis le fichier .env ( en local seulement )
+$envFile = __DIR__ . '/../sync/.env';
+if (file_exists($envFile)) {
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        
+        // Ignorer commentaires et lignes vides
+        if ($line === '' || $line[0] === '#') {
+            continue;
+        }
+        
+        // Parser la ligne KEY=VALUE
+        if (strpos($line, '=') !== false) {
+            list($name, $value) = explode('=', $line, 2);
+            putenv(trim($name) . '=' . trim($value));
+        }
+    }
 }
 
-$LW_API_TOKEN = getenv('LW_API_TOKEN');
-$LW_BASE_URL = getenv('LW_BASE_URL');
-$LW_CLIENT_ID = getenv('LW_CLIENT_ID');
+// Fichiers optionnels
+if (file_exists(__DIR__ . '/../includes/database.php')) {
+    require_once(__DIR__ . '/../includes/database.php');
+}
 
-$SUPABASE_URL = getenv('SUPABASE_URL');
-$SUPABASE_SERVICE_KEY = getenv('SUPABASE_SERVICE_KEY');
+// Constantes de configuration Supabase
+define('SUPABASE_URL', getenv('SUPABASE_URL'));
+define('SUPABASE_SERVICE_KEY', getenv('SUPABASE_SERVICE_KEY'));
+define('SUPABASE_ANON_KEY', getenv('SUPABASE_ANON_KEY') ?: '');
 
-$APP_SESSION_SECRET = getenv('APP_SESSION_SECRET');
+// Constantes LearnWorlds
+define('LW_BASE_URL', getenv('LW_BASE_URL') ?: 'https://api.learnworlds.com/v2');
+define('LW_API_TOKEN', getenv('LW_API_TOKEN'));
+define('LW_CLIENT_ID', getenv('LW_CLIENT_ID'));
 
-// Configuration des niveaux
+// Mapping niveaux/cours
 define('NIVEAUX', ['6eme', '5eme', '4eme', '3eme', '2nde', '1ere', 'term', 'term-pc']);
 
-// Mapping course_id LearnWorlds → Niveaux
 define('COURSE_MAPPING', [
-    // Cours principaux
-    'pc-terminale' => 'term-pc',
-    'maths-terminale' => 'term',
-    'maths-premiere' => '1ere',
-    'maths-seconde' => '2nde',
     'maths-6eme' => '6eme',
     'maths-5eme' => '5eme',
     'maths-4eme' => '4eme',
     'maths-3eme' => '3eme',
+    'maths-seconde' => '2nde',
+    'maths-2nde' => '2nde',
+    'maths-premiere' => '1ere',
+    'maths-1ere' => '1ere',
+    'maths-terminale' => 'term',
+    'maths-term' => 'term',
+    'maths-terminale-pc' => 'term-pc',
+    'maths-term-pc' => 'term-pc',
 ]);
 
 // Configuration des batches

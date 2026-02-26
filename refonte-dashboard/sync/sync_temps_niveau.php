@@ -1,7 +1,9 @@
 <?php
+
 require_once __DIR__ . '/../config/supabase.php';
 require_once __DIR__ . '/../includes/learnworlds.class.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../config/config.php';
 
 
 // 🎯 Paramètres de parallélisation
