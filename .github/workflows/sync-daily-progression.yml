@@ -1,7 +1,7 @@
 name: ⚡ Sync Daily Activity + Progression
 on:
   schedule:
-    - cron: "20 1 * * *" # 1h00 CET (deltas + badges)
+    - cron: "20 1 * * *" # 1h20 CET quotidien
   workflow_dispatch:
 
 concurrency:
@@ -9,39 +9,67 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  sync:
-    runs-on: ubuntu-latest
-    timeout-minutes: 100
-
+  activity:
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
-          extensions: curl, json
+          extensions: curl,json
+          coverage: none
 
       - name: ⚡ Daily Activity
+        working-directory: ./refonte-dashboard/sync
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           LW_BASE_URL: ${{ secrets.LW_BASE_URL }}
           LW_API_TOKEN: ${{ secrets.LW_API_TOKEN }}
           LW_CLIENT_ID: ${{ secrets.LW_CLIENT_ID }}
-        run: cd refonte-dashboard/sync && php sync_daily_activity.php
+        run: php sync_daily_activity.php
 
-      - name: 🏅 Progression (optionnel)
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          LW_BASE_URL: ${{ secrets.LW_BASE_URL }}
-          LW_API_TOKEN: ${{ secrets.LW_API_TOKEN }}
-          LW_CLIENT_ID: ${{ secrets.LW_CLIENT_ID }}
-        run: cd refonte-dashboard/sync && php sync_progression.php || echo "🏅 Progression ignorée"
-
-      - name: 📊 Upload logs
+      - name: 📊 Upload Activity Logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sync-daily-logs
+          name: activity-logs
           path: refonte-dashboard/logs/
-          retention-days: 5
+          retention-days: 3
+
+  progression:
+    runs-on: ubuntu-slim
+    timeout-minutes: 15
+    needs: activity # Sécurité : progression après activity
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: curl,json
+          coverage: none
+
+      - name: 🏅 Progression
+        working-directory: ./refonte-dashboard/sync
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          LW_BASE_URL: ${{ secrets.LW_BASE_URL }}
+          LW_API_TOKEN: ${{ secrets.LW_API_TOKEN }}
+          LW_CLIENT_ID: ${{ secrets.LW_CLIENT_ID }}
+        run: php sync_progression.php || echo "🏅 Progression ignorée"
+
+      - name: 📊 Upload Progression Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: progression-logs
+          path: refonte-dashboard/logs/
+          retention-days: 3
