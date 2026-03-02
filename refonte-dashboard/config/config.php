@@ -25,6 +25,9 @@ if (file_exists(__DIR__ . '/../includes/database.php')) {
     require_once(__DIR__ . '/../includes/database.php');
 }
 
+// Constantes de configuration de l'application
+define('APP_SESSION_SECRET', getenv('APP_SESSION_SECRET'));
+
 // Constantes de configuration Supabase
 define('SUPABASE_URL', getenv('SUPABASE_URL'));
 define('SUPABASE_SERVICE_KEY', getenv('SUPABASE_SERVICE_KEY'));

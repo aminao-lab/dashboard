@@ -1,24 +1,43 @@
 <?php
-$secretsPath = __DIR__ . '/config/secrets.php';
-if (!file_exists($secretsPath)) {
-  fwrite(STDERR, "❌ secrets.php introuvable: $secretsPath\n");
-  exit(1);
+/**
+ * temporary_sign.php — Générateur de lien signé (dev/debug)
+ *
+ * Utilité : génère un URL signé HMAC pour tester session_start.php
+ * sans passer par le flow d'auth normal.
+**/
+
+// Chargement du .env si disponible (local)
+$envPath = __DIR__ . '/.env';
+if (file_exists($envPath)) {
+    foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        if (str_starts_with(trim($line), '#') || !str_contains($line, '=')) continue;
+        [$key, $value] = explode('=', $line, 2);
+        $key   = trim($key);
+        $value = trim($value, " \t\n\r\0\x0B\"'");
+        if (!isset($_ENV[$key]) && getenv($key) === false) {
+            putenv("$key=$value");
+            $_ENV[$key] = $value;
+        }
+    }
 }
 
-$secrets = require $secretsPath;
-if (!is_array($secrets)) {
-  fwrite(STDERR, "❌ secrets.php doit retourner un array. Reçu: " . gettype($secrets) . "\n");
-  exit(1);
-}
+// Lecture du secret depuis l'environnement
+$secret = getenv('APP_SESSION_SECRET') ?: ($_ENV['APP_SESSION_SECRET'] ?? '');
 
-$secret = $secrets['app_session_secret'] ?? '';
 if (!is_string($secret) || $secret === '') {
-  fwrite(STDERR, "❌ app_session_secret manquant ou vide dans config/secrets.php\n");
-  exit(1);
+    fwrite(STDERR, "❌ APP_SESSION_SECRET manquant ou vide.\n");
+    fwrite(STDERR, "   → En local   : vérifier le fichier .env\n");
+    fwrite(STDERR, "   → En CI/CD   : vérifier GitHub Secrets\n");
+    exit(1);
 }
 
-$userId = '67a21edbeaae44f4240c2107'; // mets ton user_id
-$exp = time() + 600; // 10 minutes
-$sig = hash_hmac('sha256', $userId . '|' . $exp, $secret);
+// Paramètres du lien signé
+$userId = '67a21edbeaae44f4240c2107'; // à adapter
+$exp    = time() + 600;               // valide 10 minutes
+$sig    = hash_hmac('sha256', $userId . '|' . $exp, $secret);
 
-echo "http://localhost:8000/api/session_start.php?user_id=" . urlencode($userId) . "&exp=$exp&sig=$sig\n";
+echo "http://localhost:8000/api/session_start.php"
+   . "?user_id=" . urlencode($userId)
+   . "&exp=$exp"
+   . "&sig=$sig"
+   . "\n";

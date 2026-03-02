@@ -1,4 +1,4 @@
-name: 👥 Sync Students LearnWorlds (Optimized)
+name: 👥 Sync Students LearnWorlds
 
 on:
   schedule:
@@ -12,12 +12,12 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 30 # ⬆️ Augmenté à 30min par sécurité
+    timeout-minutes: 30
 
     strategy:
-      fail-fast: false # ✅ Continue même si un job échoue
+      fail-fast: false # Continue même si un job échoue
       matrix:
-        job_index: [0, 1, 2, 3] # 🚀 4 jobs parallèles
+        job_index: [0, 1, 2, 3] # 4 jobs parallèles
 
     steps:
       - name: 🔄 Checkout code
@@ -33,6 +33,8 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          LW_BASE_URL: ${{ secrets.LW_BASE_URL }}
+          LW_CLIENT_ID: ${{ secrets.LW_CLIENT_ID }}
           LW_API_TOKEN: ${{ secrets.LW_API_TOKEN }}
           JOB_INDEX: ${{ matrix.job_index }}
           TOTAL_JOBS: 4
@@ -48,7 +50,7 @@ jobs:
           path: refonte-dashboard/logs/
           retention-days: 7
 
-  # 🎯 Job de vérification final (optionnel)
+  # Job de vérification final (optionnel)
   verify:
     needs: sync
     runs-on: ubuntu-latest

@@ -1,9 +1,9 @@
-name: 📊 Sync Temps Niveau (Optimized)
+name: 📊 Sync Temps Niveau
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "15 0 * * *"
+    - cron: "25 0 * * *"
   workflow_call:
 
 concurrency:

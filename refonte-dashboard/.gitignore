@@ -6,3 +6,5 @@ sync/.env
 
 # Logs
 sync/*.log
+
+temporary_sign.php
