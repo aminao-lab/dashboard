@@ -42,6 +42,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: activity-logs-job-${{ matrix.job_index }}
+          path: refonte-dashboard/logs/
           if-no-files-found: ignore
           retention-days: 3
 
