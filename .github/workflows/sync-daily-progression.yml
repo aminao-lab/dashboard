@@ -43,7 +43,7 @@ jobs:
 
   progression:
     runs-on: ubuntu-slim
-    timeout-minutes: 15
+    timeout-minutes: 200
     needs: activity # Sécurité : progression après activity
     steps:
       - uses: actions/checkout@v4
