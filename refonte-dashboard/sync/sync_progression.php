@@ -7,6 +7,9 @@ require_once __DIR__ . '/../config/config.php';
 $jobIndex = (int)($_ENV['JOB_INDEX'] ?? 0);
 $totalCount = (int)($_ENV['JOB_COUNT'] ?? 1);
 
+set_time_limit(1800);  // 30min PHP
+ini_set('memory_limit', '512M');
+
 logMessage("=== DÉBUT SYNC PROGRESSION Job {$jobIndex}/{$totalCount} ===");
 
 $supabase = new SupabaseClient();
@@ -30,12 +33,13 @@ $endIndex = $totalStudents; // Traiter tous les élèves à chaque run
 
 $processedCount = 0;
 
-for ($i = $startIndex; $i < $totalStudents; $i++) {
-    $student = $students[$i];
-    if ($i % $totalCount !== $jobIndex) {
-        continue; // Ce n'est pas notre tour, on skip
-    }
+$studentsPerJob = ceil($totalStudents / $totalCount); // ceil sert à s'assurer que tous les étudiants sont couverts même si totalStudents n'est pas divisible par totalCount
+$startIdx = $jobIndex * $studentsPerJob;
+$endIdx = min($startIdx + $studentsPerJob, $totalStudents);
 
+for ($i = $startIdx; $i < $endIdx; $i++) {  
+
+    $student = $students[$i];
     $userId = $student['user_id'];  // ✅ user_id directement
     $email = $student['email'] ?? 'N/A';
 
@@ -85,10 +89,11 @@ for ($i = $startIndex; $i < $totalStudents; $i++) {
             }
         }
 
-        if ($i % 5 === 0) {
+/*        if ($i % 5 === 0) {
             sleep(API_DELAY);
             $processedCount ++;
         }
+            **/
     } catch (Exception $e) {
         logMessage("❌ Erreur {$userId}: " . $e->getMessage(), 'ERROR');
     }
