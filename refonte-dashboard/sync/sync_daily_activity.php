@@ -18,6 +18,9 @@ if (!$SUPABASE_URL || !$SUPABASE_SERVICE_KEY) {
 
 define('ACTIVE_THRESHOLD_SECONDS', 600);
 
+$jobIndex = (int)($_ENV['JOB_INDEX'] ?? 0);
+$totalCount = (int)($_ENV['JOB_COUNT'] ?? 1);
+
 // ✅ Date cible = J-1 (stable)
 $targetDate = (new DateTime('yesterday', new DateTimeZone('Europe/Paris')))->format('Y-m-d');
 
@@ -93,7 +96,7 @@ function sb_upsert(string $table, array $rows): void {
 
 function i($v): int { return is_numeric($v) ? (int)$v : 0; }
 
-echo "=== START sync_daily_activity (targetDate=$targetDate) ===\n";
+echo "=== START sync_daily_activity (targetDate=$targetDate) Job {$jobIndex}/{$totalCount} ===\n";
 
 // 1) lire temps_niveau
 $temps = sb_get_all('/rest/v1/temps_niveau?select=user_id,"6eme","5eme","4eme","3eme","2nde","1ere",term,"term-pc"');
@@ -143,9 +146,16 @@ foreach ($allActiveDays as $row) {
 $daysInMonth = (int)(new DateTime($targetDate))->format('t');
 
 // 2) pour chaque user : total cumul + snapshot + delta
-foreach ($temps as $r) {
+$processedCount = 0;
+foreach ($temps as $index => $r) {
+  if ($index % $totalCount !== $jobIndex){
+    continue;
+  }
+
   $userId = $r['user_id'] ?? null;
   if (!$userId) continue;
+
+  $processedCount++;
 
   // total cumul tous niveaux
   $total = i($r['6eme'] ?? 0)
@@ -186,7 +196,10 @@ foreach ($temps as $r) {
   }
 }
 
+echo "[INFO] Job {$jobIndex}/{$totalCount} processed {$processedCount} users\n";
+
 // 3) upsert bulk (par paquets pour éviter trop gros payload)
+
 $chunkSize = 250;
 
 echo "[INFO] upsert daily_cumul_snapshot rows=" . count($snapshotRows) . "\n";
@@ -199,4 +212,4 @@ for ($i = 0; $i < count($activityRows); $i += $chunkSize) {
   sb_upsert('daily_activity', array_slice($activityRows, $i, $chunkSize));
 }
 
-echo "=== END sync_daily_activity ===\n";
+echo "=== END sync_daily_activity Job {$jobIndex}/{$totalCount} ===\n";

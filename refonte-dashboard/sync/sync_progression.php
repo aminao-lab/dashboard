@@ -4,8 +4,10 @@ require_once __DIR__ . '/../includes/learnworlds.class.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../config/config.php';
 
+$jobIndex = (int)($_ENV['JOB_INDEX'] ?? 0);
+$totalCount = (int)($_ENV['JOB_COUNT'] ?? 1);
 
-logMessage("=== DÉBUT SYNC PROGRESSION ===");
+logMessage("=== DÉBUT SYNC PROGRESSION Job {$jobIndex}/{$totalCount} ===");
 
 $supabase = new SupabaseClient();
 $lw = new LearnWorlds();
@@ -21,13 +23,19 @@ $totalStudents = count($students);
 // $startIndex = getBatchProgress('progression_index') ?: 0;
 $startIndex = 0; // Toujours à 0 pour ce job de progression
 
-logMessage("📊 Total élèves : {$totalStudents}, Index : {$startIndex}");
+logMessage("📊 Job {$jobIndex}/{$totalCount} - Total élèves : {$totalStudents}");
 
 // $endIndex = min($startIndex + BATCH_SIZE, $totalStudents);
 $endIndex = $totalStudents; // Traiter tous les élèves à chaque run
 
+$processedCount = 0;
+
 for ($i = $startIndex; $i < $totalStudents; $i++) {
     $student = $students[$i];
+    if ($i % $totalCount !== $jobIndex) {
+        continue; // Ce n'est pas notre tour, on skip
+    }
+
     $userId = $student['user_id'];  // ✅ user_id directement
     $email = $student['email'] ?? 'N/A';
 
@@ -79,6 +87,7 @@ for ($i = $startIndex; $i < $totalStudents; $i++) {
 
         if ($i % 5 === 0) {
             sleep(API_DELAY);
+            $processedCount ++;
         }
     } catch (Exception $e) {
         logMessage("❌ Erreur {$userId}: " . $e->getMessage(), 'ERROR');
@@ -92,6 +101,7 @@ for ($i = $startIndex; $i < $totalStudents; $i++) {
     clearBatchProgress('progression_index');
     logMessage("🎉 Terminé ({$totalStudents}/{$totalStudents}) !");
 }*/
+echo "[INFO] Job {$jobIndex}/{$totalCount} processed {$processedCount} users\n";
 
 logMessage("🎉 Terminé ({$totalStudents}/{$totalStudents}) !");
-logMessage("=== FIN SYNC PROGRESSION ===\n");
+logMessage("=== FIN SYNC PROGRESSION Job {$jobIndex}/{$totalCount} ===\n");
