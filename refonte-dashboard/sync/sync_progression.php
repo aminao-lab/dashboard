@@ -4,6 +4,8 @@ require_once __DIR__ . '/../includes/learnworlds.class.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../config/config.php';
 
+$jobStartTime = microtime(true);
+
 $jobIndex = (int)($_ENV['JOB_INDEX'] ?? 0);
 $totalCount = (int)($_ENV['JOB_COUNT'] ?? 1);
 
@@ -36,6 +38,12 @@ $processedCount = 0;
 $studentsPerJob = ceil($totalStudents / $totalCount); // ceil sert à s'assurer que tous les étudiants sont couverts même si totalStudents n'est pas divisible par totalCount
 $startIdx = $jobIndex * $studentsPerJob;
 $endIdx = min($startIdx + $studentsPerJob, $totalStudents);
+
+logMessage("DEBUG Job {$jobIndex}/{$totalCount} - range {$startIdx} -> {$endIdx}");
+logMessage("DEBUG Job {$jobIndex}/{$totalCount} - totalStudents={$totalStudents}");
+
+$processedCount = 0;
+$loopStart = microtime(true);
 
 for ($i = $startIdx; $i < $endIdx; $i++) {  
 
@@ -98,6 +106,9 @@ for ($i = $startIdx; $i < $endIdx; $i++) {
         logMessage("❌ Erreur {$userId}: " . $e->getMessage(), 'ERROR');
     }
 }
+
+$jobElapsed = microtime(true) - $jobStart;
+logMessage("DEBUG Job {$jobIndex} FIN - processed={$processedCount}, totalTime={$jobElapsed}s");
 
 /*if ($endIndex < $totalStudents) {
     setBatchProgress('progression_index', $endIndex);
