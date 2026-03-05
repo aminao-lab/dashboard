@@ -54,7 +54,8 @@ for ($i = 0; $i < $totalStudents; $i++) {
             '2nde' => $timeData['2nde'] ?? 0,
             '1ere' => $timeData['1ere'] ?? 0,
             'term' => $timeData['term'] ?? 0,
-            'term-pc' => $timeData['term-pc'] ?? 0
+            'term-pc' => $timeData['term-pc'] ?? 0,
+            'date_maj' => date('Y-m-d H:i:s'),
         ];
 
         $processedCount++;

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../config/supabase.php';
+require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/session_check.php'; // fournit $currentUserId
 
@@ -53,28 +54,20 @@ try {
         }
     }
 
-    if ($currentTier === 'diamond') {
-        $nextTier = null;
-    }
+    if ($currentTier === 'diamond') $nextTier = null;
 
-    $daysToNext = null;
-    if ($nextTier !== null) {
-        $daysToNext = max(0, $tiers[$nextTier] - $activeDays);
-    }
+    $daysToNext = ($nextTier !== null) ? max(0, $tiers[$nextTier] - $activeDays) : null;
 
     echo json_encode([
-        'ok' => true,
-        'month' => $now->format('Y-m'),
+        'ok'          => true,
+        'month'       => $now->format('Y-m'),
         'active_days' => $activeDays,
-        'tier' => $currentTier,
-        'next_tier' => $nextTier,
-        'days_to_next' => $daysToNext
+        'tier'        => $currentTier,
+        'next_tier'   => $nextTier,
+        'days_to_next'=> $daysToNext,
     ]);
 
 } catch (Exception $e) {
-    http_response_code(401);
-    echo json_encode([
-        'ok' => false,
-        'error' => $e->getMessage()
-    ]);
+    http_response_code(500);
+    echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
 }

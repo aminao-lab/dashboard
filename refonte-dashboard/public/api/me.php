@@ -1,7 +1,7 @@
 <?php
 // public/api/me.php
 
-require __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../config/config.php';
 require __DIR__ . '/../../config/supabase.php';
 
 session_start();

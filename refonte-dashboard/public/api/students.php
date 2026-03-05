@@ -1,7 +1,7 @@
 <?php
 
 // API pour récupérer la liste des étudiants depuis Supabase
-require __DIR__ . '/../../config/config.php'; // charge la configuration générale
+require_once __DIR__ . '/../../config/config.php'; // charge la configuration générale
 require __DIR__ . '/../../config/supabase.php'; // charge les constantes liées à Supabase
 
 header('Content-Type: application/json; charset=utf-8');

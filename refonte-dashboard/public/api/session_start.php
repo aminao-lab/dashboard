@@ -1,12 +1,9 @@
 <?php
-require __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../config/config.php';
 
+$secret = APP_SESSION_SECRET ?? null;
 session_start();
 header('Content-Type: application/json; charset=utf-8');
-
-// Charger le secret depuis config/secrets.php (source unique)
-$secrets = require __DIR__ . '/../../config/secrets.php';
-$secret = $secrets['app_session_secret'] ?? '';
 
 if (!is_string($secret) || $secret === '') {
   http_response_code(500);

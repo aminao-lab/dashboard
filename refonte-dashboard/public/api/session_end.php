@@ -1,7 +1,7 @@
 <?php
 // public/api/session_end.php
 
-require __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../config/config.php';
 
 session_start();
 header('Content-Type: application/json; charset=utf-8');

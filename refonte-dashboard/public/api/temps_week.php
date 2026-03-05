@@ -1,8 +1,8 @@
 <?php
 // public/api/temps_week.php
 
-require __DIR__ . '/../../config/config.php';
-require __DIR__ . '/../../config/supabase.php';
+require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../config/supabase.php';
 
 header('Content-Type: application/json; charset=utf-8');
 session_start();

@@ -1,90 +1,87 @@
-name: 📊 Sync Temps Niveau
+name: ⚡ Sync Daily Activity + Progression
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: "25 0 * * *"
-  workflow_call:
+    - cron: "20 1 * * *" # tous les jours à 01h20
+  workflow_dispatch:
 
 concurrency:
-  group: sync-temps-niveau-${{ github.ref }}
+  group: sync-daily-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  sync:
+  activity:
     runs-on: ubuntu-latest
     timeout-minutes: 100
 
     strategy:
       fail-fast: false
       matrix:
-        job_index: [0, 1, 2, 3, 4, 5]
-    env:
-      TOTAL_JOBS: 6
+        job_index: [0, 1, 2, 3] # 4 jobs parallèles
 
     steps:
-      - name: 🔄 Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 🐘 Setup PHP 8.2
-        uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
           extensions: curl, json
 
-      - name: ⏱️ Start Timer
-        run: echo "START_TIME=$(date +%s)" >> $GITHUB_ENV
-
-      - name: 🔄 Sync Temps Niveau (Job ${{ matrix.job_index }}/4)
+      - name: ⚡ Daily Activity (Job ${{ matrix.job_index }}/4)
+        working-directory: ./refonte-dashboard/sync
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          LW_BASE_URL: ${{ secrets.LW_BASE_URL }}
           LW_API_TOKEN: ${{ secrets.LW_API_TOKEN }}
+          LW_CLIENT_ID: ${{ secrets.LW_CLIENT_ID }}
           JOB_INDEX: ${{ matrix.job_index }}
           TOTAL_JOBS: 4
-        run: |
-          cd refonte-dashboard/sync
-          php sync_temps_niveau.php
+        run: php sync_daily_activity.php
 
-      - name: ⏱️ End Timer
+      - name: 📊 Upload Logs
         if: always()
-        run: |
-          END_TIME=$(date +%s)
-          DURATION=$((END_TIME - START_TIME))
-          echo "⏱️ Durée Job ${{ matrix.job_index }}: ${DURATION}s"
-
-      - name: 📊 Upload logs (en cas d'erreur)
-        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: sync-logs-job-${{ matrix.job_index }}
+          name: activity-logs-job-${{ matrix.job_index }}
           path: refonte-dashboard/logs/
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 3
 
-  # Job de vérification final
-  verify:
-    needs: sync
+  progression:
     runs-on: ubuntu-latest
-    if: always()
+    timeout-minutes: 100
+
+    strategy:
+      fail-fast: false
+      matrix:
+        job_index: [0, 1, 2, 3] # 4 jobs parallèles
 
     steps:
-      - name: 🔄 Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 🐘 Setup PHP 8.2
-        uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
+          extensions: curl, json
 
-      - name: 📊 Statistiques finales
+      - name: 🏅 Progression (Job ${{ matrix.job_index }}/4)
+        working-directory: ./refonte-dashboard/sync
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: |
-          cd refonte-dashboard/sync
-          TOTAL=$(php -r "require '../config/supabase.php'; echo count((new SupabaseClient())->selectAll('temps_niveau'));")
-          echo "📊 Total lignes temps_niveau: ${TOTAL}"
+          LW_BASE_URL: ${{ secrets.LW_BASE_URL }}
+          LW_API_TOKEN: ${{ secrets.LW_API_TOKEN }}
+          LW_CLIENT_ID: ${{ secrets.LW_CLIENT_ID }}
+          JOB_INDEX: ${{ matrix.job_index }}
+          TOTAL_JOBS: 4
+        run: php sync_progression.php
 
-      - name: ✅ Résumé
-        run: echo "🎉 Synchronisation terminée !"
+      - name: 📊 Upload Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: progression-logs-job-${{ matrix.job_index }}
+          path: refonte-dashboard/logs/
+          if-no-files-found: ignore
+          retention-days: 3

@@ -7,7 +7,7 @@
 **/
 
 // Chargement du .env si disponible (local)
-$envPath = __DIR__ . '/.env';
+$envPath = __DIR__ . '/sync/.env';
 if (file_exists($envPath)) {
     foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
         if (str_starts_with(trim($line), '#') || !str_contains($line, '=')) continue;
